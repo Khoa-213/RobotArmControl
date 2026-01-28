@@ -1,6 +1,6 @@
-package com.example.robotcontrolsystembackend.controller;
+package com.example.robotcontrolsystembackend.presentation.controller.factory;
 
-import com.example.robotcontrolsystembackend.domain.entity.Factory;
+import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.repository.FactoryRepository;
 import org.springframework.web.bind.annotation.*;
 
