@@ -1,4 +1,4 @@
-package com.example.robotcontrolsystembackend.domain.entity;
+package com.example.robotcontrolsystembackend.domain.model;
 
 import com.example.robotcontrolsystembackend.domain.enumtype.FactoryStatus;
 import jakarta.persistence.*;
