@@ -2,7 +2,7 @@ package com.example.robotcontrolsystembackend.presentation.controller.factory;
 
 import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.repository.FactoryRepository;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.* ;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
 @RequestMapping("/api/factories")
 public class FactoryController {
 
-    private final FactoryRepository factoryRepository;
+    private final FactoryRepository factoryRepository;//
 
     public FactoryController(FactoryRepository factoryRepository) {
         this.factoryRepository = factoryRepository;
