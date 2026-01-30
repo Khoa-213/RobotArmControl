@@ -8,9 +8,13 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "factory")
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Factory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "factory_id")
@@ -19,16 +23,12 @@ public class Factory {
     @Column(name = "factory_name", nullable = false, length = 160)
     private String factoryName;
 
+    // DB hiện tại là location (không có description)
     @Column(name = "location", length = 255)
     private String location;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Enumerated(EnumType.STRING)
-    @Column(name = "factory_status", columnDefinition = "factory_status_enum", nullable = false)
+    @Column(name = "factory_status", nullable = false, columnDefinition = "factory_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private FactoryStatus factoryStatus;
-
-    public Factory(String factoryName, String location) {
-        this.factoryName = factoryName;
-        this.location = location;
-    }
 }
