@@ -9,6 +9,10 @@ import com.example.robotcontrolsystembackend.domain.enumtype.FactoryStatus;
 import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.FactoryRepository;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +53,25 @@ public class FactoryServiceImpl implements FactoryService {
                 .factoryName(saved.getFactoryName())
                 .location(saved.getLocation())
                 .factoryStatus(saved.getFactoryStatus())
+                .build();
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<FactoryResponse> searchByName(String name) {
+        String keyword = (name == null) ? "" : name.trim();
+        List<Factory> factories = factoryRepository.findByFactoryNameContainingIgnoreCase(keyword);
+        
+        return factories.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    private FactoryResponse mapToResponse(Factory factory) {
+        return FactoryResponse.builder()
+                .factoryId(factory.getFactoryId())
+                .factoryName(factory.getFactoryName())
+                .location(factory.getLocation())
+                .factoryStatus(factory.getFactoryStatus())
                 .build();
     }
 }

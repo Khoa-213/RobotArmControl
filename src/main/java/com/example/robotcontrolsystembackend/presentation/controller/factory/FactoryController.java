@@ -6,6 +6,7 @@ import com.example.robotcontrolsystembackend.application.service.factory.Factory
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.* ;
 
+import java.util.List;
 
 
 @RestController
@@ -23,4 +24,10 @@ public class FactoryController {
         return ApiResponse.ok("Tạo factory thành công", res);
     }
 
+    @GetMapping("/search")
+    public ApiResponse<List<FactoryResponse>> searchByName(
+            @RequestParam(required = false, defaultValue = "") String name) {
+        List<FactoryResponse> results = factoryService.searchByName(name);
+        return ApiResponse.ok("Tìm kiếm thành công", results);
+    }
 }
