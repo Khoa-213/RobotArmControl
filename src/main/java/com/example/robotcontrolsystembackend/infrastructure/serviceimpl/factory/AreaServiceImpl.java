@@ -4,7 +4,6 @@ import com.example.robotcontrolsystembackend.application.service.factory.AreaSer
 import com.example.robotcontrolsystembackend.application.dto.request.factory.CreateAreaRequest;
 import com.example.robotcontrolsystembackend.application.dto.request.factory.UpdateAreaRequest;
 import com.example.robotcontrolsystembackend.application.dto.response.factory.AreaResponse;
-import com.example.robotcontrolsystembackend.application.service.factory.AreaService;
 import com.example.robotcontrolsystembackend.common.exception.AppException;
 import com.example.robotcontrolsystembackend.common.exception.ErrorCode;
 import com.example.robotcontrolsystembackend.domain.enumtype.AreaStatus;

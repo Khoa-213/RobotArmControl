@@ -4,7 +4,6 @@ import com.example.robotcontrolsystembackend.application.service.factory.HubServ
 import com.example.robotcontrolsystembackend.application.dto.request.factory.CreateHubRequest;
 import com.example.robotcontrolsystembackend.application.dto.request.factory.UpdateHubRequest;
 import com.example.robotcontrolsystembackend.application.dto.response.factory.HubResponse;
-import com.example.robotcontrolsystembackend.application.service.factory.HubService;
 import com.example.robotcontrolsystembackend.common.exception.AppException;
 import com.example.robotcontrolsystembackend.common.exception.ErrorCode;
 import com.example.robotcontrolsystembackend.domain.enumtype.HubStatus;
