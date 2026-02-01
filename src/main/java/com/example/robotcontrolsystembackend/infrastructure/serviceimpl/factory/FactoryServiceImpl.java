@@ -1,6 +1,7 @@
 package com.example.robotcontrolsystembackend.infrastructure.serviceimpl.factory;
 
 import com.example.robotcontrolsystembackend.application.dto.request.factory.CreateFactoryRequest;
+import com.example.robotcontrolsystembackend.application.dto.request.factory.UpdateFactoryRequest;
 import com.example.robotcontrolsystembackend.application.dto.response.factory.FactoryResponse;
 import com.example.robotcontrolsystembackend.application.service.factory.FactoryService;
 import com.example.robotcontrolsystembackend.common.exception.AppException;
@@ -57,10 +58,10 @@ public class FactoryServiceImpl implements FactoryService {
     }
     @Override
     @Transactional(readOnly = true)
-    public List<FactoryResponse> searchByName(String name) {
-        String keyword = (name == null) ? "" : name.trim();
-        List<Factory> factories = factoryRepository.findByFactoryNameContainingIgnoreCase(keyword);
-        
+    public List<FactoryResponse> search(String keyword) {
+        String searchKeyword = (keyword == null) ? "" : keyword.trim();
+       List<Factory> factories = factoryRepository
+            .findByFactoryNameContainingIgnoreCaseOrLocationContainingIgnoreCase(searchKeyword, searchKeyword);
         return factories.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -73,5 +74,49 @@ public class FactoryServiceImpl implements FactoryService {
                 .location(factory.getLocation())
                 .factoryStatus(factory.getFactoryStatus())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public FactoryResponse updateFactory(Long factoryId, UpdateFactoryRequest request) {
+        // 1) Tìm factory
+        Factory factory = factoryRepository.findById(factoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.FACTORY_NOT_FOUND, "Factory không tồn tại"));
+
+        // 2) Validate
+        if (request.getFactoryName() == null || request.getFactoryName().trim().isEmpty()) {
+            throw new AppException(ErrorCode.FACTORY_NAME_REQUIRED, "factory_name không được rỗng");
+        }
+
+        String newName = request.getFactoryName().trim();
+
+        // 3) Kiểm tra trùng tên (ngoại trừ chính nó)
+        if (!factory.getFactoryName().equalsIgnoreCase(newName)
+                && factoryRepository.existsByFactoryNameIgnoreCase(newName)) {
+            throw new AppException(ErrorCode.FACTORY_NAME_ALREADY_EXISTS, "Factory name đã tồn tại");
+        }
+
+        // 4) Cập nhật
+        factory.setFactoryName(newName);
+        factory.setLocation(request.getLocation() == null ? null : request.getLocation().trim());
+
+        // 5) Save
+        Factory saved = factoryRepository.save(factory);
+
+        return mapToResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteFactory(Long factoryId) {
+        // 1) Tìm factory
+        Factory factory = factoryRepository.findById(factoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.FACTORY_NOT_FOUND, "Factory không tồn tại"));
+
+        // 2) Soft delete - chuyển trạng thái sang Inactive
+        factory.setFactoryStatus(FactoryStatus.Inactive);
+
+        // 3) Save
+        factoryRepository.save(factory);
     }
 }

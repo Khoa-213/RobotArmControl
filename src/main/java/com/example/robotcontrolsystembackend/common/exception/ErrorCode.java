@@ -5,7 +5,8 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR"),
     FACTORY_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "FACTORY_NAME_REQUIRED"),
-    FACTORY_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "FACTORY_NAME_ALREADY_EXISTS");
+    FACTORY_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "FACTORY_NAME_ALREADY_EXISTS"),
+    FACTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "FACTORY_NOT_FOUND");
 
     private final HttpStatus httpStatus;
     private final String code;

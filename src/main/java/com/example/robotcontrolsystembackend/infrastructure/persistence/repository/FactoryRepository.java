@@ -8,5 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FactoryRepository extends JpaRepository<Factory, Long> {
     boolean existsByFactoryNameIgnoreCase(String factoryName);
-    List<Factory> findByFactoryNameContainingIgnoreCase(String factoryName);
+    List<Factory> findByFactoryNameContainingIgnoreCaseOrLocationContainingIgnoreCase(String factoryName, String location);
 }
