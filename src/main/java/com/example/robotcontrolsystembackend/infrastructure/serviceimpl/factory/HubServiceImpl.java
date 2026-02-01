@@ -7,6 +7,7 @@ import com.example.robotcontrolsystembackend.application.dto.response.factory.Hu
 import com.example.robotcontrolsystembackend.common.exception.AppException;
 import com.example.robotcontrolsystembackend.common.exception.ErrorCode;
 import com.example.robotcontrolsystembackend.domain.enumtype.HubStatus;
+import com.example.robotcontrolsystembackend.domain.enumtype.StatusFilter;
 import com.example.robotcontrolsystembackend.domain.model.Area;
 import com.example.robotcontrolsystembackend.domain.model.Hub;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.AreaRepository;
@@ -162,6 +163,33 @@ public class HubServiceImpl implements HubService {
         Hub saved = hubRepository.save(hub);
         return toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HubResponse> searchHubs(Long areaId, String keyword, StatusFilter status) {
+
+        if (areaId == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "area_id không được null");
+        }
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "keyword không được rỗng");
+        }
+        if (!areaRepository.existsById(areaId)) {
+            throw new AppException(ErrorCode.AREA_NOT_FOUND, "Không tìm thấy Area: " + areaId);
+        }
+
+        String kw = keyword.trim();
+        StatusFilter filter = (status == null) ? StatusFilter.ALL : status;
+
+        List<Hub> hubs = switch (filter) {
+            case ALL -> hubRepository.searchByAreaIdAndName(areaId, kw);
+            case ACTIVE -> hubRepository.searchByAreaIdAndStatusAndName(areaId, HubStatus.Active, kw);
+            case INACTIVE -> hubRepository.searchByAreaIdAndStatusAndName(areaId, HubStatus.Inactive, kw);
+        };
+
+        return hubs.stream().map(this::toResponse).toList();
+    }
+
 
 
     private HubResponse toResponse(Hub hub) {

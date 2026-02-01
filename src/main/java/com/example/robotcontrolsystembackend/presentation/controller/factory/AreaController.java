@@ -5,6 +5,7 @@ import com.example.robotcontrolsystembackend.application.dto.request.factory.Upd
 import com.example.robotcontrolsystembackend.application.dto.response.factory.AreaResponse;
 import com.example.robotcontrolsystembackend.application.service.factory.AreaService;
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
+import com.example.robotcontrolsystembackend.domain.enumtype.StatusFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,5 +58,15 @@ public class AreaController {
     public ApiResponse<AreaResponse> activateArea(@PathVariable Long areaId) {
         return ApiResponse.ok("Kích hoạt lại Area thành công", areaService.activateArea(areaId));
     }
+
+    @GetMapping("/factories/{factoryId}/areas/search")
+    public ApiResponse<List<AreaResponse>> searchAreas(
+            @PathVariable Long factoryId,
+            @RequestParam String keyword,
+            @RequestParam(required = false) StatusFilter status
+    ) {
+        return ApiResponse.ok("Search Area", areaService.searchAreas(factoryId, keyword, status));
+    }
+
 
 }
