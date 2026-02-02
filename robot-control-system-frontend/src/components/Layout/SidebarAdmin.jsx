@@ -43,43 +43,41 @@ function SidebarAdmin({ collapsed }) {
       collapsible
       collapsed={collapsed}
       collapsedWidth={80}
-      theme="dark"
+      theme="light"
+      width={200}
       className="sidebar"
       style={{
-        position: "fixed",
-        left: 0,
-        top: 0,
-        bottom: 0,
         height: "100vh",
-        zIndex: 1000,
+        position:"sticky",
+        top:0,
       }}
     >
       <div className="logoContainer flex justify-center items-center h-24">
         <img
-          src=""
-          alt="ant-layout-sider-children"
+          src={null}
+          alt="logo"
           style={{
-            height: collapsed ? "5500px" : "5500px",
-            width: collapsed ? "auto" : "auto",
-            maxWidth: "95%",
+            height: collapsed ? 32 : 40,
+            width:  "auto",
+            maxWidth: "80%",
             objectFit: "contain",
             margin: "0 auto",
             display: "block",
           }}
         />
       </div>
+      
+      
 
-      <div className="sidebar-menu-wrapper">
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           inlineCollapsed={collapsed}
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={handleMenuClick}
-          className="sidebar-menu"
         />
-      </div>
+   
     </Sider>
   );
 }
