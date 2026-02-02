@@ -22,6 +22,7 @@ import {
   ReloadOutlined,
   FileSearchOutlined,
 } from "@ant-design/icons";
+import ContentTitle from "../../../Layout/ContentTitle";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -34,15 +35,17 @@ const statCardStyle = {
 
 function StatCard({ title, value, icon, iconBg, iconColor }) {
   return (
-    <Card style={statCardStyle} 
-    bodyStyle={{ 
+    <Card
+      style={statCardStyle}
+      bodyStyle={{
         padding: 16,
         height: "100%",
         display: "flex",
         alignItems: "center",
-         justifyContent: "center",
+        justifyContent: "center",
         textAlign: "center",
-         }}>
+      }}
+    >
       <Space align="center" size={14}>
         <div
           style={{
@@ -104,7 +107,6 @@ export default function DashboardPage() {
       iconColor: "#722ed1",
     },
   ];
-
 
   const logs = [
     {
@@ -186,23 +188,10 @@ export default function DashboardPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          textAlign: "left",
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
-          Tổng quan
-        </Title>
-        <Paragraph style={{ margin: 0, marginTop: 6, fontSize: 13 }}>
-          <Text style={{ color: "#1677ff", fontSize: 13 }}>Tổng quan nhanh hệ thống RobotArm ccontrol</Text>
-        </Paragraph>
-      </div>
-
+      <ContentTitle
+        title="Tổng quan hệ thống"
+        subtitle="Tổng quan nhanh về trạng thái hệ thống và các hoạt động gần đây"
+      />
       {/* Top stats */}
       <Row gutter={[16, 16]}>
         {stats.map((s) => (
@@ -221,15 +210,15 @@ export default function DashboardPage() {
             title="Hoạt động gần đây"
             bodyStyle={{ padding: 16 }}
             headStyle={{
-                background: "#507cba",
-                color: "#fff",
-                fontWeight: 600,
-                borderBottom: "1px solid #1677ff",
-                }}
-                style={{
-                borderColor: "rgba(22, 119, 255, 0.35)",
-                width:"100%"
-                }}
+              background: "#507cba",
+              color: "#fff",
+              fontWeight: 600,
+              borderBottom: "1px solid #1677ff",
+            }}
+            style={{
+              borderColor: "rgba(22, 119, 255, 0.35)",
+              width: "100%",
+            }}
           >
             <Table
               size="small"
@@ -238,7 +227,6 @@ export default function DashboardPage() {
               dataSource={logs}
               pagination={{ pageSize: 5 }}
             />
-
           </Card>
         </Col>
 
@@ -248,16 +236,15 @@ export default function DashboardPage() {
             title="Tình trạng hệ thống "
             bodyStyle={{ padding: 16 }}
             headStyle={{
-                background: "#507cba",
-                color: "#fff",
-                fontWeight: 600,
-                borderBottom: "1px solid #1677ff",
-                }}
-                style={{
-                borderColor: "rgba(22, 119, 255, 0.35)",
-                width:"100%"
-                }}
-            
+              background: "#507cba",
+              color: "#fff",
+              fontWeight: 600,
+              borderBottom: "1px solid #1677ff",
+            }}
+            style={{
+              borderColor: "rgba(22, 119, 255, 0.35)",
+              width: "100%",
+            }}
           >
             <List
               style={{ marginTop: 8 }}
