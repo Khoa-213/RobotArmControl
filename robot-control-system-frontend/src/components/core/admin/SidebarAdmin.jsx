@@ -1,12 +1,14 @@
-
-import { Layout, Menu } from "antd";
-import { useNavigate, useLocation } from "react-router-dom";
 import {
-  DashboardOutlined,
   AndroidOutlined,
+  DashboardOutlined,
+  DesktopOutlined,
+  EnvironmentOutlined,
+  HomeOutlined,
+  RobotOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-
+import { Layout, Menu } from "antd";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const { Sider } = Layout;
 
@@ -24,7 +26,28 @@ function SidebarAdmin({ collapsed }) {
       key: "/admin/control",
       icon: <AndroidOutlined />,
       label: "Điều khiển",
-      
+      children: [
+        {
+          key: "/admin/control/factories",
+          icon: <HomeOutlined />,
+          label: "Nhà máy",
+        },
+        {
+          key: "/admin/control/areas",
+          icon: <EnvironmentOutlined />,
+          label: "Khu vực",
+        },
+        {
+          key: "/admin/control/hubs",
+          icon: <RobotOutlined />,
+          label: "Trung tâm",
+        },
+        {
+          key: "/admin/control/devices",
+          icon: <DesktopOutlined />,
+          label: "Thiết bị",
+        },
+      ],
     },
     {
       key: "/admin/settings",
@@ -48,8 +71,9 @@ function SidebarAdmin({ collapsed }) {
       className="sidebar"
       style={{
         height: "100vh",
-        position:"sticky",
-        top:0,
+        position: "sticky",
+        top: 0,
+        textAlign: "left",
       }}
     >
       <div className="logoContainer flex justify-center items-center h-24">
@@ -58,7 +82,7 @@ function SidebarAdmin({ collapsed }) {
           alt="logo"
           style={{
             height: collapsed ? 32 : 40,
-            width:  "auto",
+            width: "auto",
             maxWidth: "80%",
             objectFit: "contain",
             margin: "0 auto",
@@ -66,18 +90,15 @@ function SidebarAdmin({ collapsed }) {
           }}
         />
       </div>
-      
-      
 
-        <Menu
-          theme="light"
-          mode="inline"
-          inlineCollapsed={collapsed}
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-        />
-   
+      <Menu
+        theme="light"
+        mode="inline"
+        inlineCollapsed={collapsed}
+        selectedKeys={[location.pathname]}
+        items={menuItems}
+        onClick={handleMenuClick}
+      />
     </Sider>
   );
 }
