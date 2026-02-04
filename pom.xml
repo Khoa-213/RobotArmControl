@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>robot-control-system-backend</artifactId>
+    <artifactId>robot-control-system</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>robot-control-system</name>
     <description>robot-control-system</description>
