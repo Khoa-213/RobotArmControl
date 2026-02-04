@@ -8,6 +8,8 @@ import {
     LogoutOutlined,
     SearchOutlined,
 } from "@ant-design/icons";
+//import logo
+import logo from "../../assets/logo.jpg";
 
 
 //lấy component Text từ Typography
@@ -106,6 +108,11 @@ export default function HeaderAdmin({
                 gap: 16,
             }}
             >
+                {/*Logo*/}
+                <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                    <img src={logo} alt="Logo" style={{height: 40, width: 40}}/>
+                    <Text strong style={{fontSize: 18, color: "#000000"}}>Robot Control</Text>
+                </div>
                 {/*Search factory*/}
                 <div style={{ width: 420, maxWidth: "60vw", marginLeft: 60}}>
                     <Input.Search
