@@ -6,6 +6,7 @@ import {
   AndroidOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
+import logo from "../../assets/logo.jpg";
 
 
 const { Sider } = Layout;
@@ -54,8 +55,8 @@ function SidebarAdmin({ collapsed }) {
     >
       <div className="logoContainer flex justify-center items-center h-24">
         <img
-          src={null}
-          alt="logo"
+          src={logo}
+          alt="logo.svg"
           style={{
             height: collapsed ? 32 : 40,
             width:  "auto",

@@ -79,13 +79,15 @@ button:focus-visible {
 
 .header-search.ant-space-compact {
   border-radius: 999px !important;
-  overflow: hidden !important;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  background: white;
 }
 
 .header-search.ant-space-compact
   .ant-space-compact-item:first-child
   .ant-input {
-  border-radius: 999px 0 0 999px !important;
+  border-radius: 99px 0 0 999px !important;
 }
 
 .header-search.ant-space-compact

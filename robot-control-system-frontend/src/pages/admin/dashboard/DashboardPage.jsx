@@ -113,7 +113,7 @@ export default function DashboardPage() {
       actor: "Admin",
       action: "Tạo thiết bị",
       target: "Robot Arm #10",
-      status: "success",
+      status: "thành công",
     },
     {
       key: "l2",
@@ -121,7 +121,7 @@ export default function DashboardPage() {
       actor: "Admin",
       action: "Tạo bộ điều khiển",
       target: "Hub-01 (Khu A)",
-      status: "success",
+      status: "thành công",
     },
     {
       key: "l3",
@@ -129,7 +129,7 @@ export default function DashboardPage() {
       actor: "Admin",
       action: "Gửi lệnh điều khiển",
       target: "Robot Arm #07",
-      status: "queued",
+      status: "đang chờ",
     },
   ];
 
@@ -145,9 +145,9 @@ export default function DashboardPage() {
       width: 120,
       render: (v) => {
         const map = {
-          success: { color: "green", label: "Success" },
-          queued: { color: "geekblue", label: "Queued" },
-          failed: { color: "red", label: "Failed" },
+          success: { color: "green", label: "Thành công" },
+          queued: { color: "geekblue", label: "Đang chờ" },
+          failed: { color: "red", label: "Thất bại" },
         };
         const cfg = map[v] || { color: "default", label: String(v) };
         return <Tag color={cfg.color}>{cfg.label}</Tag>;
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                 <List.Item
                   actions={[
                     <Button key="done" size="small">
-                      Done
+                      Hoàn thành
                     </Button>,
                   ]}
                 >
