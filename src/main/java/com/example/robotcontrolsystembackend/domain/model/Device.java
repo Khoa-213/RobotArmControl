@@ -3,6 +3,8 @@ package com.example.robotcontrolsystembackend.domain.model;
 import com.example.robotcontrolsystembackend.domain.enumtype.ConnectionType;
 import com.example.robotcontrolsystembackend.domain.enumtype.DeviceStatus;
 import com.example.robotcontrolsystembackend.domain.enumtype.DeviceType;
+import com.example.robotcontrolsystembackend.domain.enumtype.RobotType;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -32,6 +34,11 @@ public class Device {
     @Column(name = "device_type", nullable = false, columnDefinition = "device_type_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private DeviceType deviceType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "robot_type", columnDefinition = "robot_type_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    private RobotType robotType;
 
     @Column(name = "model", length = 100)
     private String model;
