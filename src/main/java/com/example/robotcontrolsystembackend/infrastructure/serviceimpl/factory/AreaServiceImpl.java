@@ -7,6 +7,7 @@ import com.example.robotcontrolsystembackend.application.dto.response.factory.Ar
 import com.example.robotcontrolsystembackend.common.exception.AppException;
 import com.example.robotcontrolsystembackend.common.exception.ErrorCode;
 import com.example.robotcontrolsystembackend.domain.enumtype.AreaStatus;
+import com.example.robotcontrolsystembackend.domain.enumtype.StatusFilter;
 import com.example.robotcontrolsystembackend.domain.model.Area;
 import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.AreaRepository;
@@ -163,6 +164,32 @@ public class AreaServiceImpl implements AreaService {
         Area saved = areaRepository.save(area);
         return toResponse(saved);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public List<AreaResponse> searchAreas(Long factoryId, String keyword, StatusFilter status) {
+
+        if (factoryId == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "factory_id không được null");
+        }
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "keyword không được rỗng");
+        }
+        if (!factoryRepository.existsById(factoryId)) {
+            throw new AppException(ErrorCode.FACTORY_NOT_FOUND, "Không tìm thấy Factory: " + factoryId);
+        }
+
+        String kw = keyword.trim();
+        StatusFilter filter = (status == null) ? StatusFilter.ALL : status;
+
+        List<Area> areas = switch (filter) {
+            case ALL -> areaRepository.searchByFactoryIdAndName(factoryId, kw);
+            case ACTIVE -> areaRepository.searchByFactoryIdAndStatusAndName(factoryId, AreaStatus.Active, kw);
+            case INACTIVE -> areaRepository.searchByFactoryIdAndStatusAndName(factoryId, AreaStatus.Inactive, kw);
+        };
+
+        return areas.stream().map(this::toResponse).toList();
+    }
+
 
     private AreaResponse toResponse(Area area) {
         return AreaResponse.builder()

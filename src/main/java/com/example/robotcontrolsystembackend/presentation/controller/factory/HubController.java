@@ -5,6 +5,7 @@ import com.example.robotcontrolsystembackend.application.dto.request.factory.Upd
 import com.example.robotcontrolsystembackend.application.dto.response.factory.HubResponse;
 import com.example.robotcontrolsystembackend.application.service.factory.HubService;
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
+import com.example.robotcontrolsystembackend.domain.enumtype.StatusFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,5 +58,15 @@ public class HubController {
     public ApiResponse<HubResponse> activateHub(@PathVariable Long hubId) {
         return ApiResponse.ok("Kích hoạt lại Hub thành công", hubService.activateHub(hubId));
     }
+
+    @GetMapping("/areas/{areaId}/hubs/search")
+    public ApiResponse<List<HubResponse>> searchHubs(
+            @PathVariable Long areaId,
+            @RequestParam String keyword,
+            @RequestParam(required = false) StatusFilter status
+    ) {
+        return ApiResponse.ok("Search Hub", hubService.searchHubs(areaId, keyword, status));
+    }
+
 
 }

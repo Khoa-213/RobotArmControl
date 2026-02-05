@@ -14,7 +14,13 @@ public enum ErrorCode {
     HUB_NAME_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "HUB_NAME_REQUIRED"),
 
     AREA_HAS_HUBS(org.springframework.http.HttpStatus.CONFLICT, "AREA_HAS_HUBS"),
-    HUB_HAS_DEVICES(org.springframework.http.HttpStatus.CONFLICT, "HUB_HAS_DEVICES");
+    HUB_HAS_DEVICES(org.springframework.http.HttpStatus.CONFLICT, "HUB_HAS_DEVICES"),
+
+    DEVICE_NOT_FOUND(org.springframework.http.HttpStatus.NOT_FOUND, "DEVICE_NOT_FOUND"),
+    DEVICE_NAME_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "DEVICE_NAME_REQUIRED"),
+    DEVICE_TYPE_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "DEVICE_TYPE_REQUIRED"),
+    CONNECTION_TYPE_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_REQUIRED"),
+    SERIAL_NUMBER_ALREADY_EXISTS(org.springframework.http.HttpStatus.CONFLICT, "SERIAL_NUMBER_ALREADY_EXISTS");
 
     private final HttpStatus httpStatus;
     private final String code;
