@@ -1,0 +1,367 @@
+{
+   "checksum": "3fadbf95441d33aaa1541bdd1d964831",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13253009502095771",
+            "date_last_used": "13402501377762279",
+            "guid": "549170d6-8525-4104-9615-6f9fa083d538",
+            "id": "17",
+            "name": "Gmail",
+            "type": "url",
+            "url": "https://accounts.google.com/b/0/AddMailService"
+         }, {
+            "date_added": "13253009502098817",
+            "date_last_used": "13414404653342458",
+            "guid": "71527920-7e26-4615-82fd-c4ebb86cfbc6",
+            "id": "18",
+            "name": "YouTube",
+            "type": "url",
+            "url": "https://youtube.com/"
+         }, {
+            "date_added": "13253009502099928",
+            "date_last_used": "13406886951823289",
+            "guid": "97251835-6400-4602-8eed-b4f8d634550a",
+            "id": "19",
+            "name": "Maps",
+            "type": "url",
+            "url": "https://maps.google.com/"
+         }, {
+            "date_added": "13273154034094631",
+            "date_last_used": "13402665424945724",
+            "guid": "d82a3dfa-2417-4719-bbdf-8c3117abffbc",
+            "id": "20",
+            "name": "Meet - qdn-izes-gos",
+            "type": "url",
+            "url": "https://meet.google.com/qdn-izes-gos"
+         }, {
+            "children": [ {
+               "date_added": "13251637992929901",
+               "date_last_used": "0",
+               "guid": "868bca8e-1204-4d35-83b7-c1b52654712a",
+               "id": "22",
+               "name": "Dell Auction",
+               "type": "url",
+               "url": "http://www.dellauction.com/"
+            }, {
+               "date_added": "13251637992945318",
+               "date_last_used": "0",
+               "guid": "f6dbd3f5-32b8-4963-b41b-4f67b15202ee",
+               "id": "23",
+               "name": "Dell",
+               "type": "url",
+               "url": "http://www.dell.com/"
+            }, {
+               "date_added": "13251637992945318",
+               "date_last_used": "0",
+               "guid": "eb208f98-8c14-4510-90b9-63c042d57708",
+               "id": "24",
+               "name": "Support.Dell.Com",
+               "type": "url",
+               "url": "http://www.dell.com/support/home"
+            } ],
+            "date_added": "13292694822324254",
+            "date_last_used": "0",
+            "date_modified": "13292694822324254",
+            "guid": "39dd51b3-b736-4637-9182-58430ce7032f",
+            "id": "21",
+            "name": "Dell",
+            "type": "folder"
+         }, {
+            "date_added": "13360257107937297",
+            "date_last_used": "0",
+            "guid": "d12c12d4-a76e-458a-b212-d43dde9e807a",
+            "id": "25",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Learn To Improvise With The Blues Scale - Do Re Mi Studios",
+            "type": "url",
+            "url": "https://www.doremistudios.com.au/learn-improvise-blues-scale/"
+         }, {
+            "date_added": "13363963052287938",
+            "date_last_used": "13409418929287926",
+            "guid": "0b4579a4-e5bb-4c70-9321-2d7a89a8b0c5",
+            "id": "26",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "working",
+            "type": "url",
+            "url": "https://www.linkedin.com/onboarding/start/get-the-app/new/"
+         }, {
+            "date_added": "13364995896338964",
+            "date_last_used": "13412625755442615",
+            "guid": "60285906-c19d-4a34-8260-d2c07ee235d8",
+            "id": "27",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "ea",
+            "type": "url",
+            "url": "https://www.youtube.com/"
+         }, {
+            "date_added": "13380370212001672",
+            "date_last_used": "13402505502982405",
+            "guid": "721a82e8-050c-47cf-a335-ed19119f45bd",
+            "id": "28",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "ĐĂNG KÝ TƯ VẤN COMBO CHUYÊN NGÀNH",
+            "type": "url",
+            "url": "https://docs.google.com/forms/d/e/1FAIpQLSeX_xkHyWXmX8yrpJV933bPtrvNt-OmNxrdieiuuTAVpHfgeA/viewform"
+         }, {
+            "date_added": "13388061901888906",
+            "date_last_used": "13395844638291401",
+            "guid": "8e6e5d75-2bc9-4f3d-ab03-0aee1a34f39d",
+            "id": "29",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "GIAI-THICH-TU-MOI.pdf",
+            "type": "url",
+            "url": "file:///C:/Users/quang/Documents/Zalo%20Received%20Files/GIAI-THICH-TU-MOI.pdf"
+         }, {
+            "date_added": "13390847738149672",
+            "date_last_used": "0",
+            "guid": "08ba4be9-913c-498f-b7df-60b3faa26138",
+            "id": "30",
+            "name": "Muakey.com",
+            "type": "url",
+            "url": "https://muakey.com/"
+         }, {
+            "date_added": "13391657384459041",
+            "date_last_used": "0",
+            "guid": "1bd31730-6f78-4a29-8364-6ff5e032ceb2",
+            "id": "31",
+            "name": "",
+            "type": "url",
+            "url": "https://www.deepl.com/en/translator"
+         }, {
+            "date_added": "13393588449492380",
+            "date_last_used": "13409418936596188",
+            "guid": "2d209f23-9f20-4723-8c01-adc097c8257a",
+            "id": "32",
+            "name": "Layout - Ant Design",
+            "type": "url",
+            "url": "https://ant.design/components/layout"
+         }, {
+            "date_added": "13393588487184067",
+            "date_last_used": "13395915632318790",
+            "guid": "212461eb-7ccb-446b-b984-353e1f090243",
+            "id": "33",
+            "name": "Text Color - Tailwind CSS",
+            "type": "url",
+            "url": "https://v3.tailwindcss.com/docs/text-color"
+         }, {
+            "date_added": "13393904600798461",
+            "date_last_used": "13395141026441102",
+            "guid": "a99976f0-57d4-4316-896a-1115e2788277",
+            "id": "34",
+            "name": "Configure two-factor authentication",
+            "type": "url",
+            "url": "https://github.com/settings/two_factor_authentication/setup/intro"
+         }, {
+            "date_added": "13393904601832218",
+            "date_last_used": "0",
+            "guid": "1b1cc3bc-4cc0-41b8-9ba4-292ed9ee83f9",
+            "id": "35",
+            "name": "1Password",
+            "type": "url",
+            "url": "chrome-extension://dppgmdbiimibapkepcbdbmkaabgiofem/app/app.html#/page/welcome?language=en"
+         }, {
+            "date_added": "13395064450113858",
+            "date_last_used": "0",
+            "guid": "8a9cb690-57ff-4e0a-a0b2-56781e3817fe",
+            "id": "36",
+            "name": "chat",
+            "type": "url",
+            "url": "https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API"
+         }, {
+            "date_added": "13395665779239059",
+            "date_last_used": "0",
+            "guid": "dee21f15-5fbc-4be9-a083-c79eee7a72ea",
+            "id": "37",
+            "name": "Giao tiếp tiếng nhật hàng ngày - Hơn 100 mẫu câu cơ bản",
+            "type": "url",
+            "url": "https://tiengnhatmoingay.com/giao-tiep-tieng-nhat-hang-ngay/#:~:text=1.%20%E3%81%8A%E3%81%AF%E3%82%88%E3%81%86%E3%81%94%E3%81%96%E3%81%84%E3%81%BE%E3%81%99ohayogozaimasu%20Ch%C3%A0o%20bu%E1%BB%95i%20s%C3%A1ng"
+         }, {
+            "date_added": "13397826338489683",
+            "date_last_used": "0",
+            "guid": "bef51538-014f-402e-b5e0-0bb15e1325a0",
+            "id": "38",
+            "name": "School Medical Health",
+            "type": "url",
+            "url": "http://localhost:5173/"
+         }, {
+            "children": [ {
+               "date_added": "13401378771742827",
+               "date_last_used": "13402377353336530",
+               "guid": "3c369f8a-2787-46ff-a888-004c2d8156d3",
+               "id": "40",
+               "name": "Grammar ",
+               "type": "url",
+               "url": "https://cdn.riki.edu.vn/storage/riki-online/lesson/document/1723006172-ebook-n4-np-tonghop-v2.pdf"
+            }, {
+               "date_added": "13401378800646813",
+               "date_last_used": "0",
+               "guid": "695a599a-6c30-4083-93a9-c87447ba10bb",
+               "id": "41",
+               "name": "Kanji N4",
+               "type": "url",
+               "url": "https://cdn.riki.edu.vn/storage/riki-online/lesson/document/1723004702-ebook-n4-kanji-tonghop-v2.pdf"
+            }, {
+               "date_added": "13401378813839018",
+               "date_last_used": "0",
+               "guid": "ab4e1ee8-521b-4afd-87b5-399499901173",
+               "id": "42",
+               "name": "Vocab N4",
+               "type": "url",
+               "url": "https://cdn.riki.edu.vn/storage/riki-online/lesson/document/1723004687-ebook-n4-tuvung-tonghop-v2.pdf"
+            }, {
+               "date_added": "13405739895472892",
+               "date_last_used": "0",
+               "guid": "6cdbda89-74e9-4025-8bda-b3921b81c84f",
+               "id": "43",
+               "name": "Dekiru nihongo - Sơ Trung cấp - Bài 9 Flashcards | Quizlet",
+               "type": "url",
+               "url": "https://quizlet.com/jp/1097757270/dekiru-nihongo-so-trung-cap-bai-9-flash-cards/?new"
+            }, {
+               "date_added": "13414150328337976",
+               "date_last_used": "0",
+               "guid": "889a786a-a01d-44d0-bbb0-24943b4a3277",
+               "id": "44",
+               "name": "",
+               "type": "url",
+               "url": "https://redirect.zalo.me/v3/verifyv2/pc?token=Oc_snjrpLGHX2FBFs1HLQsS0yA7GGG1gPr2deTDEL3u_MllmXaOACJDH_lY440qmE0wWgZW&continue=https%3A%2F%2Fdocs.google.com%2Fdocument%2Fd%2F1so2QC-HXA6kgd0_IzdhOdcAayni2AwB3ZRxU0t3OhIA%2Fedit%3Ftab%3Dt.0"
+            } ],
+            "date_added": "13401378793391970",
+            "date_last_used": "0",
+            "date_modified": "13414150328337976",
+            "guid": "3a5faa5f-bfdb-4061-8abe-18c761e4f012",
+            "id": "39",
+            "name": "N4 Japan",
+            "type": "folder"
+         } ],
+         "date_added": "13414421774284007",
+         "date_last_used": "0",
+         "date_modified": "13397826338489683",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "Bookmarks bar",
+         "type": "folder"
+      },
+      "other": {
+         "children": [ {
+            "children": [ {
+               "date_added": "0",
+               "date_last_used": "0",
+               "guid": "4f5a7fdb-272c-4c05-a70e-c859fb750dc1",
+               "id": "11",
+               "name": "Giường Gấp Gỗ Thông Minh Đa Năng Giá Rẻ Giao Nhanh",
+               "type": "url",
+               "url": "https://giuongtudep.vn/giuong-ngu/giuong-gap-go/"
+            } ],
+            "date_added": "13354347447371268",
+            "date_last_used": "0",
+            "date_modified": "13354347447371268",
+            "guid": "aec412d3-9ffa-45cc-8489-8af65f3b3fe7",
+            "id": "10",
+            "name": "Other Bookmarks",
+            "type": "folder"
+         }, {
+            "children": [ {
+               "date_added": "0",
+               "date_last_used": "0",
+               "guid": "37e6bc4f-578e-4fba-95b5-39a05b5419a2",
+               "id": "13",
+               "name": "Đăng nhập Facebook",
+               "type": "url",
+               "url": "https://m.facebook.com/login.php?next=https%3A%2F%2Fm.facebook.com%2Fprofile.php%3Fid%3D100015959015432%26ref%3Dcontent_filter&refsrc=https%3A%2F%2Fm.facebook.com%2Fprofile.php%3Fref%3Dcontent_filter&ref=content_filter&_rdr"
+            }, {
+               "date_added": "0",
+               "date_last_used": "0",
+               "guid": "d1a5cb90-2c65-4080-9065-be0f0fb28305",
+               "id": "14",
+               "name": "Lượng giá trị của hàng hóa – Wikipedia tiếng Việt",
+               "type": "url",
+               "url": "https://vi.m.wikipedia.org/wiki/L%C6%B0%E1%BB%A3ng_gi%C3%A1_tr%E1%BB%8B_c%E1%BB%A7a_h%C3%A0ng_h%C3%B3a"
+            }, {
+               "date_added": "0",
+               "date_last_used": "0",
+               "guid": "0edf9271-c916-440f-90a7-244efd6f281a",
+               "id": "15",
+               "name": "Áo Khoác",
+               "type": "url",
+               "url": "https://oldsailor.com.vn/ao-khoac.html"
+            }, {
+               "date_added": "0",
+               "date_last_used": "0",
+               "guid": "6f0ff66b-6bad-443b-bb36-c8a1c7a3e132",
+               "id": "16",
+               "name": "Công thức \"bẻ đôi tọa độ\" phương trình tiếp diện của mặt cầu - Toán Học Việt Nam",
+               "type": "url",
+               "url": "https://www.mathvn.com/2019/12/cong-thuc-be-oi-toa-o-phuong-trinh-tiep.html"
+            } ],
+            "date_added": "13354347447371496",
+            "date_last_used": "0",
+            "date_modified": "13354347447371496",
+            "guid": "408fdbd2-9387-49fd-aa49-65f7e5d4f340",
+            "id": "12",
+            "name": "Synced Bookmarks",
+            "type": "folder"
+         } ],
+         "date_added": "13414421774284007",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "Other bookmarks",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [ {
+            "date_added": "13214411390244565",
+            "date_last_used": "0",
+            "guid": "d4804a86-ac56-4569-bfb8-3fa62865949c",
+            "id": "6",
+            "name": "Đăng nhập Facebook",
+            "type": "url",
+            "url": "https://m.facebook.com/login.php?next=https%3A%2F%2Fm.facebook.com%2Fprofile.php%3Fid%3D100015959015432%26ref%3Dcontent_filter&refsrc=https%3A%2F%2Fm.facebook.com%2Fprofile.php%3Fref%3Dcontent_filter&ref=content_filter&_rdr"
+         }, {
+            "date_added": "13246673609944389",
+            "date_last_used": "0",
+            "guid": "e6ef587c-01ee-4aab-8ea4-a9998e61658d",
+            "id": "7",
+            "name": "Lượng giá trị của hàng hóa – Wikipedia tiếng Việt",
+            "type": "url",
+            "url": "https://vi.m.wikipedia.org/wiki/L%C6%B0%E1%BB%A3ng_gi%C3%A1_tr%E1%BB%8B_c%E1%BB%A7a_h%C3%A0ng_h%C3%B3a"
+         }, {
+            "date_added": "13286539990476156",
+            "date_last_used": "0",
+            "guid": "8292e7b3-0237-4fd3-872d-fad4ba42b5c9",
+            "id": "8",
+            "name": "Áo Khoác",
+            "type": "url",
+            "url": "https://oldsailor.com.vn/ao-khoac.html"
+         }, {
+            "date_added": "13291024053287080",
+            "date_last_used": "0",
+            "guid": "6a252eff-9152-4c25-b684-89c0b11ec3e9",
+            "id": "9",
+            "name": "Công thức \"bẻ đôi tọa độ\" phương trình tiếp diện của mặt cầu - Toán Học Việt Nam",
+            "type": "url",
+            "url": "https://www.mathvn.com/2019/12/cong-thuc-be-oi-toa-o-phuong-trinh-tiep.html"
+         } ],
+         "date_added": "13414421774284007",
+         "date_last_used": "0",
+         "date_modified": "13291024053287080",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "Mobile bookmarks",
+         "type": "folder"
+      }
+   },
+   "version": 1
+}
