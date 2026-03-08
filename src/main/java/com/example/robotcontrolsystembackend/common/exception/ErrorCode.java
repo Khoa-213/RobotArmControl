@@ -20,7 +20,18 @@ public enum ErrorCode {
     DEVICE_NAME_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "DEVICE_NAME_REQUIRED"),
     DEVICE_TYPE_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "DEVICE_TYPE_REQUIRED"),
     CONNECTION_TYPE_REQUIRED(org.springframework.http.HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_REQUIRED"),
-    SERIAL_NUMBER_ALREADY_EXISTS(org.springframework.http.HttpStatus.CONFLICT, "SERIAL_NUMBER_ALREADY_EXISTS");
+    SERIAL_NUMBER_ALREADY_EXISTS(org.springframework.http.HttpStatus.CONFLICT, "SERIAL_NUMBER_ALREADY_EXISTS"),
+
+    // Authentication & Authorization
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"),
+    USER_EXISTED(HttpStatus.CONFLICT, "USER_EXISTED"),
+    EMAIL_EXISTED(HttpStatus.CONFLICT, "EMAIL_EXISTED"),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS"),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_TOKEN"),
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "TOKEN_EXPIRED"),
+    USER_INACTIVE(HttpStatus.FORBIDDEN, "USER_INACTIVE");
 
     private final HttpStatus httpStatus;
     private final String code;
