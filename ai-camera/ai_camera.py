@@ -6,6 +6,17 @@ import math
 import urllib.request
 import os
 import time
+import requests
+
+# ============ CONFIGURATION ============
+API_BASE_URL = "http://localhost:8080"
+WS_URL = "ws://localhost:8080/ws/robot-control"
+
+# Login credentials - ĐỔI THÔNG TIN NÀY PHÙ HỢP VỚI ACCOUNT CỦA BẠN
+AI_CAMERA_USERNAME = "operator"
+AI_CAMERA_PASSWORD = "password123"
+
+JWT_TOKEN = None
 
 # ============ SETUP MEDIAPIPE ============
 BaseOptions = mp.tasks.BaseOptions
@@ -186,12 +197,56 @@ class RobotHandController:
 controller = RobotHandController()
 
 
+# ============ AUTHENTICATION ============
+def login():
+    """Đăng nhập và lấy JWT token"""
+    global JWT_TOKEN
+    try:
+        print(f"Đang đăng nhập với user: {AI_CAMERA_USERNAME}...")
+        response = requests.post(
+            f"{API_BASE_URL}/api/auth/login",
+            json={"username": AI_CAMERA_USERNAME, "password": AI_CAMERA_PASSWORD},
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success") and data.get("data"):
+                JWT_TOKEN = data["data"].get("accessToken")
+                role = data["data"].get("role", "Unknown")
+                print(f"✓ Đăng nhập thành công! Role: {role}")
+                return True
+            else:
+                print(f"✗ Login failed: {data.get('message', 'Unknown error')}")
+        else:
+            print(f"✗ Login failed with status {response.status_code}: {response.text}")
+        return False
+    except requests.exceptions.ConnectionError:
+        print("✗ Không thể kết nối đến server. Hãy chắc chắn backend đang chạy!")
+        return False
+    except Exception as e:
+        print(f"✗ Login error: {e}")
+        return False
+
+
 # ============ WEBSOCKET ============
 ws = None
 
 
 def connect():
-    global ws
+    """Kết nối WebSocket với JWT token"""
+    global ws, JWT_TOKEN
+    
+    # Login nếu chưa có token
+    if JWT_TOKEN is None:
+        if not login():
+            print("Không thể đăng nhập. Vui lòng kiểm tra:")
+            print(f"  1. Backend đang chạy tại {API_BASE_URL}")
+            print(f"  2. Account '{AI_CAMERA_USERNAME}' tồn tại với role OPERATOR hoặc ADMIN")
+            print(f"  3. Password đúng")
+            return False
+    
     try:
         if ws:
             try:
@@ -200,12 +255,26 @@ def connect():
                 pass
 
         ws = websocket.WebSocket()
-        ws.connect("ws://localhost:8080/ws/robot-control")
-        print("✓ Connected to WebSocket")
+        # Kết nối với JWT token trong header
+        ws.connect(
+            WS_URL,
+            header=[f"Authorization: Bearer {JWT_TOKEN}"]
+        )
+        print("✓ Kết nối WebSocket thành công!")
         return True
+    except websocket.WebSocketBadStatusException as e:
+        ws = None
+        print(f"✗ WebSocket connection failed: {e}")
+        if "401" in str(e):
+            print("  Token không hợp lệ hoặc hết hạn, đang thử đăng nhập lại...")
+            JWT_TOKEN = None
+            if login():
+                return connect()
+        return False
     except Exception as e:
         ws = None
         print(f"✗ Connection failed: {e}")
+        JWT_TOKEN = None
         return False
 
 
@@ -312,7 +381,10 @@ def draw_ui(frame, controller, fingers_count, handedness, palm_x, control):
 # ============ MAIN ============
 def main():
     print("=" * 72)
-    print(" AI Camera - 6 DOF Robot Arm Control")
+    print(" AI Camera - 6 DOF Robot Arm Control (with Authentication)")
+    print("=" * 72)
+    print(f"Server: {API_BASE_URL}")
+    print(f"Username: {AI_CAMERA_USERNAME}")
     print("=" * 72)
     print("0 ngon -> J0 shoulder_link")
     print("1 ngon -> J1 arm_link")
@@ -320,12 +392,15 @@ def main():
     print("3 ngon -> J3 forearm_link")
     print("4 ngon -> J4 wrist_link")
     print("5 ngon -> J5 hand_link")
-    print("Tat ca khop: di tay trai/phai de giam/tang goc")
-    print("J0 range: -175 .. 175")
+    print("Di tay trai/phai de giam/tang goc")
     print("R = Reset | Q = Quit")
     print()
 
-    connect()
+    if not connect():
+        print("\nKhông thể kết nối. Thoát chương trình.")
+        return
+    
+    print()
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
