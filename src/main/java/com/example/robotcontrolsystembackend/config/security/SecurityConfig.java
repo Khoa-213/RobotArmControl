@@ -97,7 +97,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/devices/**").hasAnyRole("ADMIN", "OPERATOR")
                         
                         // WebSocket for real-time control
-                        .requestMatchers("/ws/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers("/ws/**").permitAll()
 
                         // ===== ALL AUTHENTICATED (ADMIN, OPERATOR, VIEWER) =====
                         // View logs - All authenticated users can view
