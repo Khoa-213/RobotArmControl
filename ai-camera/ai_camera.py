@@ -221,8 +221,7 @@ def login():
             data = response.json()
             if data.get("success") and data.get("data"):
                 JWT_TOKEN = data["data"].get("accessToken")
-                role = data["data"].get("role", "Unknown")
-                print(f"✓ Đăng nhập thành công! Role: {role}")
+                print("✓ Đăng nhập thành công!")
                 return True
             else:
                 print(f"✗ Login failed: {data.get('message', 'Unknown error')}")
