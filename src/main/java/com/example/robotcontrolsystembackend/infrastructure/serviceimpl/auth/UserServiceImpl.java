@@ -34,12 +34,12 @@ public class UserServiceImpl implements UserService {
     public UserResponse createUser(CreateUserRequest request) {
         // Check if username exists
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCode.USER_EXISTED);
+            throw new AppException(ErrorCode.USER_EXISTED, "Username already exists");
         }
         
         // Check if email exists
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException(ErrorCode.EMAIL_EXISTED);
+            throw new AppException(ErrorCode.EMAIL_EXISTED, "Email already exists");
         }
         
         User user = User.builder()
@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId));
         return mapToResponse(user);
     }
 
@@ -74,18 +74,18 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId));
         
         if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.getUsername())) {
-                throw new AppException(ErrorCode.USER_EXISTED);
+                throw new AppException(ErrorCode.USER_EXISTED, "Username already exists");
             }
             user.setUsername(request.getUsername());
         }
         
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new AppException(ErrorCode.EMAIL_EXISTED);
+                throw new AppException(ErrorCode.EMAIL_EXISTED, "Email already exists");
             }
             user.setEmail(request.getEmail());
         }
@@ -106,7 +106,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUserRole(Long userId, UpdateUserRoleRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId));
         
         user.setRole(request.getRole());
         User savedUser = userRepository.save(user);
@@ -117,7 +117,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deactivateUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId));
         
         user.setUserStatus(UserStatus.Inactive);
         userRepository.save(user);
@@ -127,7 +127,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse activateUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId));
         
         user.setUserStatus(UserStatus.Active);
         User savedUser = userRepository.save(user);
@@ -138,7 +138,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
+            throw new AppException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId);
         }
         userRepository.deleteById(userId);
     }

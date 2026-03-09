@@ -77,16 +77,35 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
 
-                        // ADMIN only
+                        // ===== ADMIN ONLY =====
+                        // User/Account management - ADMIN only
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
 
-                        // ADMIN and OPERATOR
+                        // ===== ADMIN + OPERATOR =====
+                        // AI Camera Control - Gesture recognition and robot control
+                        .requestMatchers(HttpMethod.POST, "/api/gestures/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/gestures/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/gesture-mappings/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/gesture-mappings/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/robot-commands/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/robot-commands/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers("/api/control/**").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers("/api/runtime/**").hasAnyRole("ADMIN", "OPERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/devices/**").hasAnyRole("ADMIN", "OPERATOR")
                         .requestMatchers(HttpMethod.PUT, "/api/devices/**").hasAnyRole("ADMIN", "OPERATOR")
-                        .requestMatchers("/api/control/**").hasAnyRole("ADMIN", "OPERATOR")
+                        
+                        // WebSocket for real-time control
+                        .requestMatchers("/ws/**").hasAnyRole("ADMIN", "OPERATOR")
 
-                        // All authenticated users (ADMIN, OPERATOR, VIEWER)
+                        // ===== ALL AUTHENTICATED (ADMIN, OPERATOR, VIEWER) =====
+                        // View logs - All authenticated users can view
+                        .requestMatchers(HttpMethod.GET, "/api/logs/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/control-logs/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/gestures/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/gesture-mappings/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/robot-commands/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
 
                         .anyRequest().authenticated()
