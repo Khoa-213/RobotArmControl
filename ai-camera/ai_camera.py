@@ -7,6 +7,8 @@ import urllib.request
 import os
 import time
 import requests
+import threading
+import numpy as np
 
 # ============ CONFIGURATION ============
 API_BASE_URL = "http://localhost:8080"
@@ -17,6 +19,11 @@ AI_CAMERA_USERNAME = None
 AI_CAMERA_PASSWORD = None
 
 JWT_TOKEN = None
+
+# Camera control state
+camera_active = False
+camera_lock = threading.Lock()
+stop_event = threading.Event()
 
 # ============ SETUP MEDIAPIPE ============
 BaseOptions = mp.tasks.BaseOptions
@@ -230,13 +237,62 @@ def login():
         return False
 
 
-# ============ WEBSOCKET ============
-ws = None
+# ============ WEBSOCKET WITH MESSAGE LISTENER ============
+ws_app = None
+ws_connected = False
 
 
-def connect():
-    """Kết nối WebSocket với JWT token"""
-    global ws, JWT_TOKEN
+def on_message(ws, message):
+    """Xử lý tin nhắn từ server"""
+    global camera_active
+    try:
+        data = json.loads(message)
+        msg_type = data.get("type", "")
+        
+        # Xử lý lệnh điều khiển camera
+        if msg_type == "camera_control":
+            command = data.get("command", "")
+            with camera_lock:
+                if command == "START":
+                    if not camera_active:
+                        camera_active = True
+                        print("\n" + "="*50)
+                        print(">>> AI CAMERA ACTIVATED - Bắt đầu điều khiển! <<<")
+                        print("="*50 + "\n")
+                elif command == "STOP":
+                    if camera_active:
+                        camera_active = False
+                        print("\n" + "="*50)
+                        print(">>> AI CAMERA DEACTIVATED - Kết thúc điều khiển <<<")
+                        print("="*50 + "\n")
+    except json.JSONDecodeError:
+        pass  # Ignore non-JSON messages
+    except Exception as e:
+        print(f"Error processing message: {e}")
+
+
+def on_error(ws, error):
+    """Xử lý lỗi WebSocket"""
+    print(f"✗ WebSocket error: {error}")
+
+
+def on_close(ws, close_status_code, close_msg):
+    """Xử lý đóng kết nối"""
+    global ws_connected
+    ws_connected = False
+    print(f"WebSocket disconnected (code: {close_status_code})")
+
+
+def on_open(ws):
+    """Xử lý mở kết nối"""
+    global ws_connected
+    ws_connected = True
+    print("✓ WebSocket kết nối thành công! Đang chờ lệnh START từ server...")
+
+
+def connect_websocket():
+    """Kết nối WebSocket với message listener"""
+    global ws_app, JWT_TOKEN
     
     # Login nếu chưa có token
     if JWT_TOKEN is None:
@@ -248,39 +304,32 @@ def connect():
             return False
     
     try:
-        if ws:
-            try:
-                ws.close()
-            except:
-                pass
-
-        ws = websocket.WebSocket()
-        # Kết nối với JWT token trong header
-        ws.connect(
+        ws_app = websocket.WebSocketApp(
             WS_URL,
-            header=[f"Authorization: Bearer {JWT_TOKEN}"]
+            header=[f"Authorization: Bearer {JWT_TOKEN}"],
+            on_open=on_open,
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
         )
-        print("✓ Kết nối WebSocket thành công!")
-        return True
-    except websocket.WebSocketBadStatusException as e:
-        ws = None
-        print(f"✗ WebSocket connection failed: {e}")
-        if "401" in str(e):
-            print("  Token không hợp lệ hoặc hết hạn, đang thử đăng nhập lại...")
-            JWT_TOKEN = None
-            if login():
-                return connect()
-        return False
+        
+        # Run WebSocket in background thread
+        ws_thread = threading.Thread(target=ws_app.run_forever, daemon=True)
+        ws_thread.start()
+        
+        # Wait for connection
+        time.sleep(2)
+        return ws_connected
+        
     except Exception as e:
-        ws = None
-        print(f"✗ Connection failed: {e}")
-        JWT_TOKEN = None
+        print(f"✗ Failed to connect: {e}")
         return False
 
 
 def send_angles(angles):
-    global ws
-    if ws is None:
+    """Gửi góc điều khiển qua WebSocket"""
+    global ws_app
+    if ws_app is None or not ws_connected:
         return
 
     payload = {
@@ -289,14 +338,9 @@ def send_angles(angles):
     }
 
     try:
-        ws.send(json.dumps(payload))
-    except Exception:
-        print("! WebSocket disconnected, reconnecting...")
-        if connect():
-            try:
-                ws.send(json.dumps(payload))
-            except:
-                pass
+        ws_app.send(json.dumps(payload))
+    except Exception as e:
+        print(f"! Error sending angles: {e}")
 
 
 # ============ DRAW ============
@@ -380,10 +424,10 @@ def draw_ui(frame, controller, fingers_count, handedness, palm_x, control):
 
 # ============ MAIN ============
 def main():
-    global AI_CAMERA_USERNAME, AI_CAMERA_PASSWORD
+    global AI_CAMERA_USERNAME, AI_CAMERA_PASSWORD, camera_active
     
     print("=" * 72)
-    print(" AI Camera - 6 DOF Robot Arm Control (with Authentication)")
+    print(" AI Camera - 6 DOF Robot Arm Control (Auto-Start Mode)")
     print("=" * 72)
     print(f"Server: {API_BASE_URL}")
     print("=" * 72)
@@ -398,87 +442,134 @@ def main():
         return
     
     print()
-    print("0 ngon -> J0 shoulder_link")
-    print("1 ngon -> J1 arm_link")
-    print("2 ngon -> J2 elbow_link")
-    print("3 ngon -> J3 forearm_link")
-    print("4 ngon -> J4 wrist_link")
-    print("5 ngon -> J5 hand_link")
-    print("Di tay trai/phai de giam/tang goc")
-    print("R = Reset | Q = Quit")
-    print()
-
-    if not connect():
-        print("\nKhông thể kết nối. Thoát chương trình.")
+    
+    # Kết nối WebSocket
+    if not connect_websocket():
+        print("\n✗ Không thể kết nối. Thoát chương trình.")
         return
     
     print()
+    print("AI Camera đang chờ lệnh START từ Frontend...")
+    print("(Camera sẽ tự động bật khi bạn nhấn 'Bắt đầu điều khiển' trên web)")
+    print()
+    print("="*50)
+    print("Hướng dẫn sử dụng khi camera hoạt động:")
+    print("0 ngón -> J0 shoulder_link")
+    print("1 ngón -> J1 arm_link")
+    print("2 ngón -> J2 elbow_link")
+    print("3 ngón -> J3 forearm_link")
+    print("4 ngón -> J4 wrist_link")
+    print("5 ngón -> J5 hand_link")
+    print("Di tay trái/phải để giảm/tăng góc")
+    print("R = Reset | Q = Quit")
+    print("="*50)
+    print()
 
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("✗ Cannot open camera")
-        return
-
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    print("✓ Camera started")
-
+    cap = None
     ts = 0
     prev_time = time.time()
+    
+    try:
+        while True:
+            # Check if camera should be active
+            with camera_lock:
+                is_active = camera_active
+            
+            if is_active:
+                # Camera is active - process video
+                if cap is None:
+                    cap = cv2.VideoCapture(0)
+                    if not cap.isOpened():
+                        print("✗ Cannot open camera")
+                        camera_active = False
+                        continue
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    print("✓ Camera started")
+                    ts = 0
+                    prev_time = time.time()
+                
+                ret, frame = cap.read()
+                if not ret:
+                    time.sleep(0.01)
+                    continue
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+                frame = cv2.flip(frame, 1)
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                ts += 33
+                hand_landmarker.detect_async(mp_img, ts)
 
-        mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        ts += 33
-        hand_landmarker.detect_async(mp_img, ts)
+                now = time.time()
+                dt = now - prev_time
+                prev_time = now
+                dt = max(0.001, min(dt, 0.05))
 
-        now = time.time()
-        dt = now - prev_time
-        prev_time = now
-        dt = max(0.001, min(dt, 0.05))
+                if latest_landmarks:
+                    frame = draw_hand(frame, latest_landmarks)
 
-        if latest_landmarks:
-            frame = draw_hand(frame, latest_landmarks)
+                    fingers_count, palm_x, palm_y, control = controller.update_angles(
+                        latest_landmarks,
+                        latest_handedness,
+                        dt
+                    )
 
-            fingers_count, palm_x, palm_y, control = controller.update_angles(
-                latest_landmarks,
-                latest_handedness,
-                dt
-            )
+                    send_angles(controller.angles)
+                    draw_ui(frame, controller, fingers_count, latest_handedness, palm_x, control)
+                else:
+                    cv2.putText(frame, "Dua tay vao camera", (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
-            send_angles(controller.angles)
-            draw_ui(frame, controller, fingers_count, latest_handedness, palm_x, control)
-        else:
-            cv2.putText(frame, "Dua tay vao camera", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                    for i, angle in enumerate(controller.angles):
+                        cv2.putText(frame, f"{controller.joint_names[i]}: {angle:>7.1f}", (10, 70 + i * 28),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 0), 2)
 
-            for i, angle in enumerate(controller.angles):
-                cv2.putText(frame, f"{controller.joint_names[i]}: {angle:>7.1f}", (10, 70 + i * 28),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 0), 2)
+                # Show status on frame
+                cv2.putText(frame, "ACTIVE", (frame.shape[1] - 100, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                
+                cv2.imshow("AI Camera Robot Control", frame)
 
-        cv2.imshow("AI Camera Robot Control", frame)
-
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            break
-        elif key == ord('r'):
-            controller.reset_angles()
-            print("Angles reset.")
-
-    cap.release()
-    cv2.destroyAllWindows()
-    hand_landmarker.close()
-    if ws:
-        try:
-            ws.close()
-        except:
-            pass
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    break
+                elif key == ord('r'):
+                    controller.reset_angles()
+                    print("Angles reset.")
+            else:
+                # Camera is inactive - wait mode
+                if cap is not None:
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    cap = None
+                    print("Camera stopped. Waiting for START command...")
+                
+                # Show waiting window
+                wait_frame = 255 * np.ones((200, 500, 3), dtype=np.uint8)
+                cv2.putText(wait_frame, "AI Camera - Standby Mode", (50, 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+                cv2.putText(wait_frame, "Waiting for START from Frontend...", (50, 130),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
+                cv2.putText(wait_frame, "Press Q to quit", (50, 170),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
+                
+                cv2.imshow("AI Camera Robot Control", wait_frame)
+                
+                key = cv2.waitKey(100) & 0xFF
+                if key == ord('q'):
+                    break
+                    
+    except KeyboardInterrupt:
+        print("\nInterrupted by user")
+    finally:
+        if cap is not None:
+            cap.release()
+        cv2.destroyAllWindows()
+        hand_landmarker.close()
+        if ws_app:
+            ws_app.close()
+        print("AI Camera đã dừng.")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Slf4j
@@ -36,5 +37,30 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
         log.info("Client disconnected: {} | Remaining: {}", session.getId(), sessions.size());
+    }
+
+    /**
+     * Broadcast a message to all connected clients
+     * Used by ControlSessionService to send camera control commands
+     */
+    public void broadcastMessage(String message) {
+        TextMessage textMessage = new TextMessage(message);
+        for (WebSocketSession s : sessions) {
+            if (s.isOpen()) {
+                try {
+                    s.sendMessage(textMessage);
+                } catch (IOException e) {
+                    log.error("Failed to send message to session {}: {}", s.getId(), e.getMessage());
+                }
+            }
+        }
+        log.info("Broadcast message to {} clients: {}", sessions.size(), message);
+    }
+
+    /**
+     * Get the number of connected clients
+     */
+    public int getConnectedClientsCount() {
+        return sessions.size();
     }
 }
