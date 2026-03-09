@@ -12,9 +12,9 @@ import requests
 API_BASE_URL = "http://localhost:8080"
 WS_URL = "ws://localhost:8080/ws/robot-control"
 
-# Login credentials - ĐỔI THÔNG TIN NÀY PHÙ HỢP VỚI ACCOUNT CỦA BẠN
-AI_CAMERA_USERNAME = "operator"
-AI_CAMERA_PASSWORD = "password123"
+# Credentials sẽ được nhập khi chạy chương trình
+AI_CAMERA_USERNAME = None
+AI_CAMERA_PASSWORD = None
 
 JWT_TOKEN = None
 
@@ -380,12 +380,24 @@ def draw_ui(frame, controller, fingers_count, handedness, palm_x, control):
 
 # ============ MAIN ============
 def main():
+    global AI_CAMERA_USERNAME, AI_CAMERA_PASSWORD
+    
     print("=" * 72)
     print(" AI Camera - 6 DOF Robot Arm Control (with Authentication)")
     print("=" * 72)
     print(f"Server: {API_BASE_URL}")
-    print(f"Username: {AI_CAMERA_USERNAME}")
     print("=" * 72)
+    
+    # Nhập thông tin đăng nhập
+    print("\n--- ĐĂNG NHẬP ---")
+    AI_CAMERA_USERNAME = input("Username: ").strip()
+    AI_CAMERA_PASSWORD = input("Password: ").strip()
+    
+    if not AI_CAMERA_USERNAME or not AI_CAMERA_PASSWORD:
+        print("✗ Username và password không được để trống!")
+        return
+    
+    print()
     print("0 ngon -> J0 shoulder_link")
     print("1 ngon -> J1 arm_link")
     print("2 ngon -> J2 elbow_link")
