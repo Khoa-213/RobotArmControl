@@ -25,27 +25,27 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         
         String authHeader = request.getHeaders().getFirst("Authorization");
         
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("WebSocket connection rejected: Missing or invalid Authorization header");
-            response.setStatusCode(HttpStatus.UNAUTHORIZED);
-            return false;
-        }
-        
-        String token = authHeader.substring(7);
-        
-        try {
-            if (jwtProvider.validateToken(token)) {
-                String username = jwtProvider.getUsernameFromToken(token);
-                attributes.put("username", username);
-                log.info("WebSocket connection authorized for user: {}", username);
-                return true;
+        // Nếu có token, validate và lưu username
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                if (jwtProvider.validateToken(token)) {
+                    String username = jwtProvider.getUsernameFromToken(token);
+                    attributes.put("username", username);
+                    attributes.put("authenticated", true);
+                    log.info("WebSocket connection authorized for user: {}", username);
+                    return true;
+                }
+            } catch (Exception e) {
+                log.warn("WebSocket JWT validation failed: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("WebSocket JWT validation failed: {}", e.getMessage());
         }
         
-        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-        return false;
+        // Cho phép kết nối không cần token (Unity robot)
+        attributes.put("username", "anonymous");
+        attributes.put("authenticated", false);
+        log.info("WebSocket connection allowed without authentication (Unity client)");
+        return true;
     }
 
     @Override
