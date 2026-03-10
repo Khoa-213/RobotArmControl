@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * User Management Controller - ADMIN only
  * Allows ADMIN users to manage all user accounts including:
@@ -109,24 +111,29 @@ public class UserController {
                 .build());
     }
 
-    @PatchMapping("/{userId}/deactivate")
-    @Operation(summary = "Deactivate user", description = "Deactivate a user account (ADMIN only)")
-    public ResponseEntity<ApiResponse<Void>> deactivateUser(@PathVariable Long userId) {
-        userService.deactivateUser(userId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("User deactivated successfully")
-                .build());
-    }
-
-    @PatchMapping("/{userId}/activate")
-    @Operation(summary = "Activate user", description = "Activate a user account (ADMIN only)")
-    public ResponseEntity<ApiResponse<UserResponse>> activateUser(@PathVariable Long userId) {
-        UserResponse response = userService.activateUser(userId);
-        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
-                .success(true)
-                .message("User activated successfully")
-                .data(response)
+    @PatchMapping("/{userId}/status")
+    @Operation(summary = "Update user status", description = "Activate or deactivate a user account. Body: {\"status\":\"ACTIVE\"} or {\"status\":\"INACTIVE\"} (ADMIN only)")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> body) {
+        String status = body.getOrDefault("status", "");
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            UserResponse response = userService.activateUser(userId);
+            return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                    .success(true)
+                    .message("User activated successfully")
+                    .data(response)
+                    .build());
+        } else if ("INACTIVE".equalsIgnoreCase(status)) {
+            userService.deactivateUser(userId);
+            return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                    .success(true)
+                    .message("User deactivated successfully")
+                    .build());
+        }
+        return ResponseEntity.badRequest().body(ApiResponse.<UserResponse>builder()
+                .success(false)
+                .message("Invalid status. Allowed values: ACTIVE, INACTIVE")
                 .build());
     }
 

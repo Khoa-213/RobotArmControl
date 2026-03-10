@@ -82,10 +82,11 @@ public class HandGestureController {
                 .build());
     }
 
-    @PostMapping("/recognize")
-    @Operation(summary = "Recognize gesture from AI Camera", description = "Process gesture recognition from AI Camera feed (ADMIN, OPERATOR only)")
+    // POST /api/gestures/recognitions  — replaces /recognize verb
+    @PostMapping("/recognitions")
+    @Operation(summary = "Create gesture recognition", description = "Submit AI Camera feed data to recognize a hand gesture (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> recognizeGesture(@RequestBody Object cameraData) {
+    public ResponseEntity<ApiResponse<String>> createRecognition(@RequestBody Object cameraData) {
         // TODO: Implement with AI Camera integration
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
