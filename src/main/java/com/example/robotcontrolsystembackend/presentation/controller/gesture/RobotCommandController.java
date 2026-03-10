@@ -83,10 +83,11 @@ public class RobotCommandController {
                 .build());
     }
 
-    @PostMapping("/{commandId}/execute")
-    @Operation(summary = "Execute command", description = "Execute a specific robot command (ADMIN, OPERATOR only)")
+    // POST /api/robot-commands/{commandId}/executions  — replaces /{commandId}/execute verb
+    @PostMapping("/{commandId}/executions")
+    @Operation(summary = "Execute robot command", description = "Execute a specific robot command and record the execution result (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> executeCommand(@PathVariable Long commandId) {
+    public ResponseEntity<ApiResponse<String>> createCommandExecution(@PathVariable Long commandId) {
         // TODO: Implement with robot arm integration
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)

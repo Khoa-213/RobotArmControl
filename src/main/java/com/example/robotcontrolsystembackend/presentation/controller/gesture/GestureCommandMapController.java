@@ -83,14 +83,15 @@ public class GestureCommandMapController {
                 .build());
     }
 
-    @PostMapping("/execute")
-    @Operation(summary = "Execute gesture command", description = "Execute robot command based on recognized gesture (ADMIN, OPERATOR only)")
+    // POST /api/gesture-mappings/executions  — replaces /execute verb
+    @PostMapping("/executions")
+    @Operation(summary = "Execute gesture mapping", description = "Trigger robot command execution based on a recognized gesture. Body: gesture data from AI Camera (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> executeGestureCommand(@RequestBody Object gestureData) {
+    public ResponseEntity<ApiResponse<String>> createExecution(@RequestBody Object gestureData) {
         // TODO: Implement with robot control integration
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
-                .message("Command executed successfully")
+                .message("Gesture mapping executed successfully")
                 .data("Execution result")
                 .build());
     }

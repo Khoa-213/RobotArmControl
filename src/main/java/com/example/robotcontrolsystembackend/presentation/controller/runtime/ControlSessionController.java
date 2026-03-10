@@ -19,7 +19,19 @@ import java.util.Map;
  * Control Session Controller
  * Manages robot control sessions with CAMERA or BUTTON mode
  * - GET operations: All authenticated users (ADMIN, OPERATOR, VIEWER)
- * - POST/PUT/DELETE operations: ADMIN and OPERATOR only
+ * - POST/PATCH/DELETE operations: ADMIN and OPERATOR only
+ *
+ * Endpoints:
+ *   POST   /api/control-sessions                    — start a new session (replaces /start)
+ *   GET    /api/control-sessions                    — list sessions (?status=&page=&size=)
+ *   GET    /api/control-sessions/{sessionId}        — get single session
+ *   PUT    /api/control-sessions/{sessionId}        — update session
+ *   PATCH  /api/control-sessions/{sessionId}/status — update session status (e.g., end it)
+ *   DELETE /api/control-sessions/{sessionId}        — delete session
+ *   GET    /api/control-sessions/current            — get current active session (replaces /status)
+ *   PATCH  /api/control-sessions/current/status     — stop current session (replaces POST /stop)
+ *   POST   /api/control-sessions/current/joint-commands      — send single joint angle (BUTTON mode)
+ *   POST   /api/control-sessions/current/joint-commands/bulk — send all joint angles (BUTTON mode)
  */
 @RestController
 @RequestMapping("/api/control-sessions")
@@ -29,13 +41,17 @@ public class ControlSessionController {
 
     private final ControlSessionService controlSessionService;
 
+    // ==================== COLLECTION CRUD ====================
+
+    // GET /api/control-sessions?status=ACTIVE&page=0&size=10
     @GetMapping
-    @Operation(summary = "Get all sessions", description = "Retrieve all control sessions (All roles)")
+    @Operation(summary = "Get all sessions", description = "Retrieve all control sessions. Filter by status (ACTIVE/ENDED/etc.), paginate with page & size (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
     public ResponseEntity<ApiResponse<String>> getAllSessions(
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        // TODO: Implement with ControlSessionService
+        // TODO: Implement with ControlSessionService — filter by status
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
                 .message("Sessions retrieved successfully")
@@ -55,27 +71,21 @@ public class ControlSessionController {
                 .build());
     }
 
-    @GetMapping("/active")
-    @Operation(summary = "Get active sessions", description = "Retrieve all active control sessions (All roles)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getActiveSessions() {
-        // TODO: Implement with ControlSessionService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Active sessions retrieved successfully")
-                .data("List of active sessions")
-                .build());
-    }
-
+    // POST /api/control-sessions  — replaces /start; body contains controlMode (CAMERA|BUTTON)
     @PostMapping
-    @Operation(summary = "Create session", description = "Create a new control session (ADMIN, OPERATOR only)")
+    @Operation(summary = "Start control session",
+               description = "Start a new control session with CAMERA or BUTTON mode. " +
+                           "CAMERA mode activates AI Camera for hand gesture control. " +
+                           "BUTTON mode enables manual control via frontend angle commands. " +
+                           "(ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> createSession(@RequestBody Object request) {
-        // TODO: Implement with ControlSessionService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Session created successfully")
-                .data("New session")
+    public ResponseEntity<ApiResponse<SessionStatusResponse>> startSession(
+            @Valid @RequestBody StartSessionRequest request) {
+        SessionStatusResponse response = controlSessionService.startSession(request);
+        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
+                .success(response.isSessionActive())
+                .message(response.getMessage())
+                .data(response)
                 .build());
     }
 
@@ -93,20 +103,23 @@ public class ControlSessionController {
                 .build());
     }
 
-    @PostMapping("/{sessionId}/end")
-    @Operation(summary = "End session", description = "End a control session (ADMIN, OPERATOR only)")
+    // PATCH /api/control-sessions/{sessionId}/status  body: {"status":"ENDED"}
+    @PatchMapping("/{sessionId}/status")
+    @Operation(summary = "Update session status", description = "Update the status of a specific session (e.g., end it). Body: {\"status\":\"ENDED\"} (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> endSession(@PathVariable Long sessionId) {
-        // TODO: Implement with ControlSessionService
+    public ResponseEntity<ApiResponse<String>> updateSessionStatus(
+            @PathVariable Long sessionId,
+            @RequestBody Map<String, String> body) {
+        // TODO: Implement with ControlSessionService — route to appropriate action based on body.get("status")
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
-                .message("Session ended successfully")
-                .data("Ended session " + sessionId)
+                .message("Session status updated successfully")
+                .data("Session " + sessionId + " status: " + body.get("status"))
                 .build());
     }
 
     @DeleteMapping("/{sessionId}")
-    @Operation(summary = "Delete session", description = "Delete a control session (ADMIN only)")
+    @Operation(summary = "Delete session", description = "Delete a control session record (ADMIN only)")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteSession(@PathVariable Long sessionId) {
         // TODO: Implement with ControlSessionService
@@ -116,43 +129,14 @@ public class ControlSessionController {
                 .build());
     }
 
-    // ==================== CONTROL SESSION (CAMERA / BUTTON) ====================
+    // ==================== CURRENT ACTIVE SESSION ====================
 
-    @PostMapping("/start")
-    @Operation(summary = "Start control session", 
-               description = "Start a control session with CAMERA or BUTTON mode. " +
-                           "CAMERA mode activates AI Camera for hand gesture control. " +
-                           "BUTTON mode enables manual control via frontend buttons. " +
-                           "(ADMIN, OPERATOR only)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<SessionStatusResponse>> startSession(
-            @Valid @RequestBody StartSessionRequest request) {
-        SessionStatusResponse response = controlSessionService.startSession(request);
-        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
-                .success(response.isSessionActive())
-                .message(response.getMessage())
-                .data(response)
-                .build());
-    }
-
-    @PostMapping("/stop")
-    @Operation(summary = "Stop control session", 
-               description = "Stop the current control session (ADMIN, OPERATOR only)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<SessionStatusResponse>> stopSession() {
-        SessionStatusResponse response = controlSessionService.stopSession();
-        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
-                .success(true)
-                .message(response.getMessage())
-                .data(response)
-                .build());
-    }
-
-    @GetMapping("/status")
-    @Operation(summary = "Get session status", 
-               description = "Get current control session status including mode and camera state (All roles)")
+    // GET /api/control-sessions/current  — replaces /status
+    @GetMapping("/current")
+    @Operation(summary = "Get current session",
+               description = "Get current active control session status including mode and camera state (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<SessionStatusResponse>> getSessionStatus() {
+    public ResponseEntity<ApiResponse<SessionStatusResponse>> getCurrentSession() {
         SessionStatusResponse response = controlSessionService.getSessionStatus();
         return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
                 .success(true)
@@ -161,66 +145,76 @@ public class ControlSessionController {
                 .build());
     }
 
-    // ==================== BUTTON MODE CONTROL ====================
-
-    @PostMapping("/button/angle")
-    @Operation(summary = "Send single joint angle", 
-               description = "Send angle command for a specific joint (BUTTON mode only). " +
-                           "Joint index: 0-5, Angle: depends on joint limits. " +
-                           "(ADMIN, OPERATOR only)")
+    // PATCH /api/control-sessions/current/status  — replaces POST /stop
+    @PatchMapping("/current/status")
+    @Operation(summary = "Stop current session",
+               description = "Stop the current active control session (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<Void>> sendAngle(
-            @RequestParam int jointIndex,
-            @RequestParam double angle) {
-        
-        if (controlSessionService.getCurrentControlMode() != ControlMode.BUTTON) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .success(false)
-                    .message("Not in BUTTON mode. Current mode: " + controlSessionService.getCurrentControlMode())
-                    .build());
-        }
-        
-        boolean success = controlSessionService.sendAngleCommand(jointIndex, angle);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(success)
-                .message(success ? "Angle sent successfully" : "Failed to send angle")
+    public ResponseEntity<ApiResponse<SessionStatusResponse>> stopCurrentSession() {
+        SessionStatusResponse response = controlSessionService.stopSession();
+        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
+                .success(true)
+                .message(response.getMessage())
+                .data(response)
                 .build());
     }
 
-    @PostMapping("/button/angles")
-    @Operation(summary = "Send all joint angles", 
-               description = "Send angles for all 6 joints at once (BUTTON mode only). " +
-                           "Array must have exactly 6 values. " +
-                           "(ADMIN, OPERATOR only)")
+    // ==================== BUTTON MODE JOINT COMMANDS ====================
+
+    // POST /api/control-sessions/current/joint-commands?jointIndex=0&angle=45.0  — replaces /button/angle
+    @PostMapping("/current/joint-commands")
+    @Operation(summary = "Send single joint angle command",
+               description = "Send angle command for a specific joint (BUTTON mode only). " +
+                           "Query params: jointIndex (0-5), angle (degrees). (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<Void>> sendAllAngles(@RequestBody double[] angles) {
-        
+    public ResponseEntity<ApiResponse<Void>> sendJointCommand(
+            @RequestParam int jointIndex,
+            @RequestParam double angle) {
         if (controlSessionService.getCurrentControlMode() != ControlMode.BUTTON) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
                     .success(false)
                     .message("Not in BUTTON mode. Current mode: " + controlSessionService.getCurrentControlMode())
                     .build());
         }
-        
+        boolean success = controlSessionService.sendAngleCommand(jointIndex, angle);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(success)
+                .message(success ? "Joint command sent successfully" : "Failed to send joint command")
+                .build());
+    }
+
+    // POST /api/control-sessions/current/joint-commands/bulk  — replaces /button/angles
+    @PostMapping("/current/joint-commands/bulk")
+    @Operation(summary = "Send all joint angles in bulk",
+               description = "Send angles for all 6 joints at once (BUTTON mode only). " +
+                           "Body: array of exactly 6 double values. (ADMIN, OPERATOR only)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<ApiResponse<Void>> sendBulkJointCommands(@RequestBody double[] angles) {
+        if (controlSessionService.getCurrentControlMode() != ControlMode.BUTTON) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
+                    .success(false)
+                    .message("Not in BUTTON mode. Current mode: " + controlSessionService.getCurrentControlMode())
+                    .build());
+        }
         if (angles == null || angles.length != 6) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
                     .success(false)
                     .message("Angles array must have exactly 6 values")
                     .build());
         }
-        
         boolean success = controlSessionService.sendAllAngles(angles);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(success)
-                .message(success ? "Angles sent successfully" : "Failed to send angles")
+                .message(success ? "Joint commands sent successfully" : "Failed to send joint commands")
                 .build());
     }
 
-    // ==================== LEGACY CAMERA CONTROL (for backward compatibility) ====================
+    // ==================== LEGACY ENDPOINTS (DEPRECATED) ====================
 
+    @Deprecated
     @PostMapping("/camera/start")
-    @Operation(summary = "Start AI Camera (legacy)", 
-               description = "Start AI Camera mode - equivalent to starting session with CAMERA mode (ADMIN, OPERATOR only)")
+    @Operation(summary = "[DEPRECATED] Start AI Camera",
+               description = "DEPRECATED — use POST /api/control-sessions with body {\"controlMode\":\"CAMERA\"} instead. (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<ApiResponse<SessionStatusResponse>> startCamera() {
         StartSessionRequest request = StartSessionRequest.builder()
@@ -234,19 +228,21 @@ public class ControlSessionController {
                 .build());
     }
 
+    @Deprecated
     @PostMapping("/camera/stop")
-    @Operation(summary = "Stop AI Camera (legacy)", 
-               description = "Stop current session - equivalent to /stop (ADMIN, OPERATOR only)")
+    @Operation(summary = "[DEPRECATED] Stop AI Camera",
+               description = "DEPRECATED — use PATCH /api/control-sessions/current/status instead. (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<ApiResponse<SessionStatusResponse>> stopCamera() {
-        return stopSession();
+        return stopCurrentSession();
     }
 
+    @Deprecated
     @GetMapping("/camera/status")
-    @Operation(summary = "Get Camera status (legacy)", 
-               description = "Get session status - equivalent to /status (All roles)")
+    @Operation(summary = "[DEPRECATED] Get Camera status",
+               description = "DEPRECATED — use GET /api/control-sessions/current instead. (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
     public ResponseEntity<ApiResponse<SessionStatusResponse>> getCameraStatus() {
-        return getSessionStatus();
+        return getCurrentSession();
     }
 }

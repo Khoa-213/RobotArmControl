@@ -25,18 +25,23 @@ public class ControlLogController {
 
     // TODO: Inject ControlLogService when implemented
 
+    // GET /api/control-logs?deviceId=&userId=&sessionId=&type=&command=&sortBy=&sortDir=&startTime=&endTime=&page=&size=
     @GetMapping
-    @Operation(summary = "Get all control logs", description = "Retrieve all control logs with pagination (All roles can view)")
+    @Operation(summary = "Get control logs", description = "Retrieve control logs with optional filters for device, user, session, type (GESTURE/BUTTON), time range, and pagination (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
     public ResponseEntity<ApiResponse<String>> getAllLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String deviceId,
-            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) Long deviceId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long sessionId,
+            @RequestParam(required = false) String type,
             @RequestParam(required = false) String command,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) LocalDateTime startTime,
             @RequestParam(required = false) LocalDateTime endTime) {
-        // TODO: Implement with ControlLogService
+        // TODO: Implement with ControlLogService — pass all filters through
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
                 .message("Control logs retrieved successfully")
@@ -45,7 +50,7 @@ public class ControlLogController {
     }
 
     @GetMapping("/{logId}")
-    @Operation(summary = "Get log by ID", description = "Retrieve a specific control log entry (All roles can view)")
+    @Operation(summary = "Get log by ID", description = "Retrieve a specific control log entry (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
     public ResponseEntity<ApiResponse<String>> getLogById(@PathVariable Long logId) {
         // TODO: Implement with ControlLogService
@@ -56,78 +61,18 @@ public class ControlLogController {
                 .build());
     }
 
-    @GetMapping("/device/{deviceId}")
-    @Operation(summary = "Get logs by device", description = "Retrieve all control logs for a specific device (All roles can view)")
+    // GET /api/control-logs/stats?startTime=&endTime=
+    // Note: will be moved to GET /api/statistics/control-logs in a future refactor
+    @GetMapping("/stats")
+    @Operation(summary = "Get log statistics", description = "Retrieve control log statistics and analytics (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getLogsByDevice(
-            @PathVariable Long deviceId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        // TODO: Implement with ControlLogService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Device logs retrieved successfully")
-                .data("Logs for device " + deviceId)
-                .build());
-    }
-
-    @GetMapping("/user/{userId}")
-    @Operation(summary = "Get logs by user", description = "Retrieve all control logs for a specific user (All roles can view)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getLogsByUser(
-            @PathVariable Long userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        // TODO: Implement with ControlLogService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("User logs retrieved successfully")
-                .data("Logs for user " + userId)
-                .build());
-    }
-
-    @GetMapping("/session/{sessionId}")
-    @Operation(summary = "Get logs by session", description = "Retrieve all control logs for a specific session (All roles can view)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getLogsBySession(
-            @PathVariable Long sessionId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        // TODO: Implement with ControlLogService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Session logs retrieved successfully")
-                .data("Logs for session " + sessionId)
-                .build());
-    }
-
-    @GetMapping("/gesture-history")
-    @Operation(summary = "Get gesture recognition history", description = "Retrieve AI Camera gesture recognition history (All roles can view)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getGestureHistory(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String gesture,
+    public ResponseEntity<ApiResponse<String>> getLogStats(
             @RequestParam(required = false) LocalDateTime startTime,
             @RequestParam(required = false) LocalDateTime endTime) {
         // TODO: Implement with ControlLogService
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
-                .message("Gesture history retrieved successfully")
-                .data("Gesture recognition history")
-                .build());
-    }
-
-    @GetMapping("/statistics")
-    @Operation(summary = "Get log statistics", description = "Retrieve control log statistics and analytics (All roles can view)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getLogStatistics(
-            @RequestParam(required = false) LocalDateTime startTime,
-            @RequestParam(required = false) LocalDateTime endTime) {
-        // TODO: Implement with ControlLogService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Statistics retrieved successfully")
+                .message("Log statistics retrieved successfully")
                 .data("Log statistics")
                 .build());
     }
@@ -143,15 +88,16 @@ public class ControlLogController {
                 .build());
     }
 
-    @DeleteMapping("/clear")
-    @Operation(summary = "Clear old logs", description = "Clear logs older than specified date (ADMIN only)")
+    // DELETE /api/control-logs/bulk?before=2025-01-01T00:00:00 — replaces /clear verb
+    @DeleteMapping("/bulk")
+    @Operation(summary = "Bulk delete old logs", description = "Delete all logs before a specified ISO datetime (ADMIN only)")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> clearOldLogs(@RequestParam LocalDateTime beforeDate) {
+    public ResponseEntity<ApiResponse<String>> bulkDeleteLogs(@RequestParam LocalDateTime before) {
         // TODO: Implement with ControlLogService
         return ResponseEntity.ok(ApiResponse.<String>builder()
                 .success(true)
-                .message("Old logs cleared successfully")
-                .data("Deleted logs before " + beforeDate)
+                .message("Old logs deleted successfully")
+                .data("Deleted logs before " + before)
                 .build());
     }
 }

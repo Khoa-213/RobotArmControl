@@ -25,11 +25,19 @@ public class FactoryController {
         return ApiResponse.ok("Tạo factory thành công", res);
     }
 
-    @GetMapping("/search")
-    public ApiResponse<List<FactoryResponse>> search(
-            @RequestParam(required = false, defaultValue = "") String keyword) {
-        List<FactoryResponse> results = factoryService.search(keyword);
-        return ApiResponse.ok("Tìm kiếm thành công", results);
+    // GET /api/factories?search=keyword
+    @GetMapping
+    public ApiResponse<List<FactoryResponse>> getFactories(
+            @RequestParam(required = false, defaultValue = "") String search) {
+        List<FactoryResponse> results = factoryService.search(search);
+        return ApiResponse.ok("Lấy danh sách factory thành công", results);
+    }
+
+    // GET /api/factories/{factoryId}
+    @GetMapping("/{factoryId}")
+    public ApiResponse<FactoryResponse> getFactoryById(@PathVariable Long factoryId) {
+        // TODO: Implement factoryService.getFactoryById(factoryId)
+        return ApiResponse.ok("Lấy factory thành công", null);
     }
     @PutMapping("/{factoryId}")
     public ApiResponse<FactoryResponse> update(
