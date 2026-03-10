@@ -33,8 +33,5 @@ build/
 ### VS Code ###
 .vscode/
 
-# AstraDB Secure Connect Bundle (contains credentials - never commit)
-src/main/resources/secure-connect-*.zip
-
 # Secrets folder (contains SCB and credentials)
 secrets/
