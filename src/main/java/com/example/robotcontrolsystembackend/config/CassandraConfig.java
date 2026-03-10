@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
 
 import java.net.URL;
+import java.nio.file.Paths;
 
 @Configuration
 @EnableCassandraRepositories(
@@ -27,8 +28,15 @@ public class CassandraConfig {
     private String scbFilename;
 
     @Bean
-    public CqlSession cassandraSession() {
-        URL scbUrl = getClass().getClassLoader().getResource(scbFilename);
+    public CqlSession cassandraSession() throws Exception {
+        URL scbUrl;
+        if (scbFilename.startsWith("/") || scbFilename.contains(":")) {
+            // Docker/server: đường dẫn tuyệt đối
+            scbUrl = Paths.get(scbFilename).toUri().toURL();
+        } else {
+            // Local dev: classpath
+            scbUrl = getClass().getClassLoader().getResource(scbFilename);
+        }
         return CqlSession.builder()
                 .withCloudSecureConnectBundle(scbUrl)
                 .withAuthCredentials(username, password)
