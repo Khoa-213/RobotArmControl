@@ -1,291 +1,152 @@
 import React from "react";
-import {
-  Card,
-  Row,
-  Col,
-  Typography,
-  Space,
-  Table,
-  Tag,
-  Button,
-  List,
-  Progress,
-  Divider,
-} from "antd";
-import {
-  BankOutlined,
-  ClusterOutlined,
-  ApartmentOutlined,
-  RobotOutlined,
-  ThunderboltOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  FileSearchOutlined,
-} from "@ant-design/icons";
 
-const { Title, Paragraph, Text } = Typography;
+function StatusBadge({ status }) {
+  const s = String(status || "").toLowerCase();
+  const cls =
+    s === "success"
+      ? "bg-green-500/15 text-green-300"
+      : s === "queued"
+        ? "bg-white/10 text-white/70"
+        : "bg-red-500/15 text-red-300";
 
-const statCardStyle = {
-  borderRadius: 12,
-  boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-  border: "1px solid rgba(5, 5, 5, 0.06)",
-  height: 140,
-};
-
-function StatCard({ title, value, icon, iconBg, iconColor }) {
   return (
-    <Card style={statCardStyle} 
-    bodyStyle={{ 
-        padding: 16,
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-         justifyContent: "center",
-        textAlign: "center",
-         }}>
-      <Space align="center" size={14}>
-        <div
-          style={{
-            width: 76,
-            height: 76,
-            borderRadius: 10,
-            display: "grid",
-            placeItems: "center",
-            background: iconBg,
-            color: iconColor,
-            flex: "0 0 auto",
-          }}
-        >
-          {icon}
-        </div>
-
-        <div style={{ minWidth: 0 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {title}
-          </Text>
-          <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>
-            {value}
-          </div>
-        </div>
-      </Space>
-    </Card>
+    <span
+      className={[
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+        cls,
+      ].join(" ")}
+    >
+      {s || "unknown"}
+    </span>
   );
 }
 
 export default function DashboardPage() {
-  // ===== Mock summary numbers =====
   const stats = [
-    {
-      value: 5,
-      title: "Nhà máy",
-      icon: <BankOutlined style={{ fontSize: 50 }} />,
-      iconBg: "rgba(22, 119, 255, 0.12)",
-      iconColor: "#1677ff",
-    },
-    {
-      title: "Khu vực",
-      value: 12,
-      icon: <ApartmentOutlined style={{ fontSize: 50 }} />,
-      iconBg: "rgba(82, 196, 26, 0.12)",
-      iconColor: "#52c41a",
-    },
-    {
-      title: "Bộ điều khiển",
-      value: 9,
-      icon: <ClusterOutlined style={{ fontSize: 50 }} />,
-      iconBg: "rgba(250, 173, 20, 0.14)",
-      iconColor: "#faad14",
-    },
-    {
-      title: "Thiết bị",
-      value: 28,
-      icon: <RobotOutlined style={{ fontSize: 50 }} />,
-      iconBg: "rgba(114, 46, 209, 0.12)",
-      iconColor: "#722ed1",
-    },
+    { label: "Factories", value: 5 },
+    { label: "Areas", value: 12 },
+    { label: "Hubs", value: 9 },
+    { label: "Devices", value: 28 },
   ];
-
 
   const logs = [
     {
-      key: "l1",
       time: "2026-02-02 09:21",
       actor: "Admin",
-      action: "Tạo thiết bị",
+      action: "Created device",
       target: "Robot Arm #10",
-      status: "thành công",
+      status: "success",
     },
     {
-      key: "l2",
       time: "2026-02-02 09:05",
       actor: "Admin",
-      action: "Tạo bộ điều khiển",
-      target: "Hub-01 (Khu A)",
-      status: "thành công",
+      action: "Created hub",
+      target: "Hub-01 (Area A)",
+      status: "success",
     },
     {
-      key: "l3",
       time: "2026-02-01 16:48",
       actor: "Admin",
-      action: "Gửi lệnh điều khiển",
+      action: "Sent command",
       target: "Robot Arm #07",
-      status: "đang chờ",
-    },
-  ];
-
-  const logColumns = [
-    { title: "Thời gian", dataIndex: "time", key: "time", width: 160 },
-    { title: "Thực hiện", dataIndex: "actor", key: "actor", width: 120 },
-    { title: "Hành động", dataIndex: "action", key: "action", width: 170 },
-    { title: "Đối tượng", dataIndex: "target", key: "target" },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: 120,
-      render: (v) => {
-        const map = {
-          success: { color: "green", label: "Thành công" },
-          queued: { color: "geekblue", label: "Đang chờ" },
-          failed: { color: "red", label: "Thất bại" },
-        };
-        const cfg = map[v] || { color: "default", label: String(v) };
-        return <Tag color={cfg.color}>{cfg.label}</Tag>;
-      },
-    },
-  ];
-
-  // ===== Mock: System Health + Quick Actions =====
-  const health = {
-    onlineDevices: 24,
-    totalDevices: 28,
-    hubOnline: 8,
-    hubTotal: 9,
-    alerts: 2,
-  };
-
-  const onlinePct =
-    health.totalDevices === 0
-      ? 0
-      : Math.round((health.onlineDevices / health.totalDevices) * 100);
-
-  const todoItems = [
-    {
-      key: "t1",
-      title: "Kiểm tra Hub-03 (mất kết nối)",
-    },
-    {
-      key: "t2",
-      title: "Gán thiết bị mới vào Khu A",
-    },
-    {
-      key: "t3",
-      title: "Rà soát quyền người dùng",
+      status: "queued",
     },
   ];
 
   return (
-    <div style={{ width: "100%" }}>
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          textAlign: "left",
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
-          Tổng quan
-        </Title>
-        <Paragraph style={{ margin: 0, marginTop: 6, fontSize: 13 }}>
-          <Text style={{ color: "#1677ff", fontSize: 13 }}>Tổng quan nhanh hệ thống RobotArm ccontrol</Text>
-        </Paragraph>
+    <div className="w-full">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-white text-left align-top">Dashboard</h1>
+        <p className="mt-1 text-sm text-white/60 text-left align-top">
+          Overview of your RoboArm system
+        </p>
       </div>
 
-      {/* Top stats */}
-      <Row gutter={[16, 16]}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <Col key={s.title} xs={24} sm={12} lg={6}>
-            <StatCard {...s} />
-          </Col>
+          <div
+            key={s.label}
+            className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5"
+          >
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              {s.label}
+            </div>
+            <div className="mt-2 text-3xl font-semibold text-white">
+              {s.value}
+            </div>
+          </div>
         ))}
-      </Row>
+      </div>
 
-      <Divider style={{ margin: "16px 0" }} />
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10">
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              Activity
+            </div>
+          </div>
 
-      {/* Bottom: 2 big blocks */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
-          <Card
-            title="Hoạt động gần đây"
-            bodyStyle={{ padding: 16 }}
-            headStyle={{
-                background: "#507cba",
-                color: "#fff",
-                fontWeight: 600,
-                borderBottom: "1px solid #1677ff",
-                }}
-                style={{
-                borderColor: "rgba(22, 119, 255, 0.35)",
-                width:"100%"
-                }}
-          >
-            <Table
-              size="small"
-              rowKey="key"
-              columns={logColumns}
-              dataSource={logs}
-              pagination={{ pageSize: 5 }}
-            />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs uppercase tracking-wider text-white/40">
+                  <th className="text-left font-medium px-5 py-3">Time</th>
+                  <th className="text-left font-medium px-5 py-3">Actor</th>
+                  <th className="text-left font-medium px-5 py-3">Action</th>
+                  <th className="text-left font-medium px-5 py-3">Target</th>
+                  <th className="text-left font-medium px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {logs.map((l) => (
+                  <tr
+                    key={l.time + l.action}
+                    className="hover:bg-white/5 transition"
+                  >
+                    <td className="px-5 py-4 text-white/70">{l.time}</td>
+                    <td className="px-5 py-4 text-white/70">{l.actor}</td>
+                    <td className="px-5 py-4 text-white">{l.action}</td>
+                    <td className="px-5 py-4 text-white/70">{l.target}</td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={l.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-          </Card>
-        </Col>
+        <div className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5">
+          <div className="text-xs uppercase tracking-wider text-white/50">
+            System Health
+          </div>
 
-        {/* System Health + Quick Actions */}
-        <Col xs={24} lg={8}>
-          <Card
-            title="Tình trạng hệ thống "
-            bodyStyle={{ padding: 16 }}
-            headStyle={{
-                background: "#507cba",
-                color: "#fff",
-                fontWeight: 600,
-                borderBottom: "1px solid #1677ff",
-                }}
-                style={{
-                borderColor: "rgba(22, 119, 255, 0.35)",
-                width:"100%"
-                }}
-            
-          >
-            <List
-              style={{ marginTop: 8 }}
-              dataSource={todoItems}
-              renderItem={(item) => (
-                <List.Item
-                  actions={[
-                    <Button key="done" size="small">
-                      Hoàn thành
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={
-                      <Space size={8}>
-                        {item.tag}
-                        <span>{item.title}</span>
-                      </Space>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between text-white/70">
+              <span>Devices online</span>
+              <span className="text-white">24/28</span>
+            </div>
+            <div className="flex items-center justify-between text-white/70">
+              <span>Hubs online</span>
+              <span className="text-white">8/9</span>
+            </div>
+            <div className="flex items-center justify-between text-white/70">
+              <span>Alerts</span>
+              <span className="text-white">2</span>
+            </div>
+          </div>
 
-            <Divider style={{ margin: "12px 0" }} />
-          </Card>
-        </Col>
-      </Row>
+          <div className="mt-5">
+            <button
+              type="button"
+              className="w-full h-10 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition"
+            >
+              View details
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
