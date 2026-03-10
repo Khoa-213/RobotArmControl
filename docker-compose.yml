@@ -14,7 +14,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/robotdb
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-postgres}
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - JWT_SECRET=${JWT_SECRET}
+      - ASTRA_TOKEN=${ASTRA_TOKEN}
+      - SCB_PATH=/app/secrets/secure-connect-robot-control-log.zip
+    volumes:
+      - ./secrets:/app/secrets:ro
     depends_on:
       db:
         condition: service_healthy
