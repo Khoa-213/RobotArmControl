@@ -10,6 +10,8 @@ import threading
 import numpy as np
 
 # ============ CONFIGURATION ============
+# API_BASE_URL = "http://localhost:8080"
+# WS_URL = "ws://localhost:8080/ws/robot-control"
 API_BASE_URL = "https://robot-control-system-rmbw.onrender.com"
 WS_URL = "wss://robot-control-system-rmbw.onrender.com/ws/robot-control"
 
