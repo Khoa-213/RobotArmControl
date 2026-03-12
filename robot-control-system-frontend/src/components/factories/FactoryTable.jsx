@@ -29,22 +29,20 @@ export default function FactoryTable({ factories, loading, onEdit, onDelete }) {
           <tr className="text-xs uppercase tracking-wider text-white/40">
             <th className="text-left font-medium px-5 py-3">Name</th>
             <th className="text-left font-medium px-5 py-3">Location</th>
-            <th className="text-left font-medium px-5 py-3">Created Date</th>
             <th className="text-left font-medium px-5 py-3">Status</th>
             <th className="text-left font-medium px-5 py-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
           {factories.map((f) => {
-            const active = String(f.status).toLowerCase() === "active";
+            const active = String(f.factoryStatus).toLowerCase() === "active";
             return (
-              <tr key={f.id} className="hover:bg-white/5 transition">
+              <tr key={f.factoryId} className="hover:bg-white/5 transition">
                 <td className="px-5 py-4 text-left align-top">
-                  <div className="text-white font-medium">{f.name}</div>
-                  <div className="text-xs text-white/50">ID: {f.id}</div>
+                  <div className="text-white font-medium">{f.factoryName}</div>
+                  <div className="text-xs text-white/50">ID: {f.factoryId}</div>
                 </td>
                 <td className="px-5 py-4 text-white/70 text-left align-top">{f.location}</td>
-                <td className="px-5 py-4 text-white/70 text-left align-top">{f.createdAt || "—"}</td>
                 <td className="px-5 py-4 text-left align-top">
                   <StatusPill active={active} />
                 </td>

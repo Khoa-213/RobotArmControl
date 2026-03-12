@@ -1,23 +1,27 @@
 import React, { useState } from "react";
 
 export default function CreateAreaModal({ open, onClose, onSubmit, loading, factories }) {
-  const [form, setForm] = useState({ name: "", factoryId: "", status: "Active" });
+  const [form, setForm] = useState({ areaName: "", areaDescription: "", factoryId: "" });
   const [error, setError] = useState("");
 
   if (!open) return null;
 
   function handleSubmit() {
-    const name = form.name.trim();
-    if (!name) { setError("Name is required."); return; }
+    const areaName = form.areaName.trim();
+    if (!areaName) { setError("Name is required."); return; }
     if (!form.factoryId) { setError("Please select a factory."); return; }
     setError("");
-    onSubmit({ name, factoryId: Number(form.factoryId), status: form.status });
-    setForm({ name: "", factoryId: "", status: "Active" });
+    onSubmit({
+      factoryId: Number(form.factoryId),
+      areaName,
+      areaDescription: form.areaDescription.trim(),
+    });
+    setForm({ areaName: "", areaDescription: "", factoryId: "" });
   }
 
   function handleClose() {
     setError("");
-    setForm({ name: "", factoryId: "", status: "Active" });
+    setForm({ areaName: "", areaDescription: "", factoryId: "" });
     onClose();
   }
 
@@ -37,22 +41,19 @@ export default function CreateAreaModal({ open, onClose, onSubmit, loading, fact
         <div className="mt-4 space-y-3">
           <label className="block">
             <div className="text-xs text-white/60 mb-1">Name</div>
-            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Assembly Line A" />
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.areaName} onChange={(e) => setForm((p) => ({ ...p, areaName: e.target.value }))} placeholder="e.g. Assembly Line A" />
+          </label>
+          <label className="block">
+            <div className="text-xs text-white/60 mb-1">Description</div>
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.areaDescription} onChange={(e) => setForm((p) => ({ ...p, areaDescription: e.target.value }))} placeholder="e.g. Main assembly area" />
           </label>
           <label className="block">
             <div className="text-xs text-white/60 mb-1">Factory</div>
             <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.factoryId} onChange={(e) => setForm((p) => ({ ...p, factoryId: e.target.value }))}>
               <option className="bg-neutral-900" value="">Select a factory...</option>
               {(factories || []).map((f) => (
-                <option key={f.id} className="bg-neutral-900" value={f.id}>{f.name}</option>
+                <option key={f.factoryId} className="bg-neutral-900" value={f.factoryId}>{f.factoryName}</option>
               ))}
-            </select>
-          </label>
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Status</div>
-            <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-              <option className="bg-neutral-900" value="Active">Active</option>
-              <option className="bg-neutral-900" value="Inactive">Inactive</option>
             </select>
           </label>
         </div>

@@ -3,7 +3,9 @@ import DeviceTable from "../../../components/devices/DeviceTable";
 import CreateDeviceModal from "../../../components/devices/CreateDeviceModal";
 import EditDeviceModal from "../../../components/devices/EditDeviceModal";
 import { getDevices, createDevice, updateDevice, deleteDevice } from "../../../api/deviceService";
-import { getHubs } from "../../../api/hubService";
+import { getHubsByArea } from "../../../api/hubService";
+import { getAreasByFactory } from "../../../api/areaService";
+import { getFactories } from "../../../api/factoryService";
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState([]);
@@ -15,36 +17,58 @@ export default function DevicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      setError("");
-      const [devicesData, hubsData] = await Promise.all([getDevices(), getHubs()]);
-      setDevices(Array.isArray(devicesData) ? devicesData : []);
-      setHubs(Array.isArray(hubsData) ? hubsData : []);
-    } catch (e) {
-      setError(e?.message || "Failed to load data");
-    } finally {
-      setLoading(false);
+ async function loadData() {
+  try {
+    setLoading(true);
+    setError("");
+
+    // Load factories → areas → hubs
+    const factoriesData = await getFactories();
+    const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
+
+    const allAreas = [];
+    for (const f of factoryList) {
+      try {
+        const areasData = await getAreasByFactory(f.factoryId);
+        if (Array.isArray(areasData)) allAreas.push(...areasData);
+      } catch { /* skip */ }
     }
+
+    const allHubs = [];
+    for (const a of allAreas) {
+      try {
+        const hubsData = await getHubsByArea(a.areaId);
+        if (Array.isArray(hubsData)) allHubs.push(...hubsData);
+      } catch { /* skip */ }
+    }
+    setHubs(allHubs);
+
+    // Load devices — deviceService vẫn mock, nên getDevices() OK
+    const devicesData = await getDevices();
+    setDevices(Array.isArray(devicesData) ? devicesData : []);
+  } catch (e) {
+    setError(e?.message || "Failed to load data");
+  } finally {
+    setLoading(false);
   }
+}
 
   useEffect(() => { loadData(); }, []);
 
   const canCreate = hubs.length > 0;
 
   const enrichedDevices = devices.map((d) => {
-    const hub = hubs.find((h) => h.id === d.hubId);
-    return { ...d, hubName: hub?.name || `Hub #${d.hubId}` };
+    const hub = hubs.find((h) => h.hubId === d.hubId);
+    return { ...d, hubName: hub?.hubName || `Hub #${d.hubId}` };
   });
 
   async function handleCreate(formData) {
     try {
       setSaving(true);
       setError("");
-      const hub = hubs.find((h) => h.id === formData.hubId);
+      const hub = hubs.find((h) => h.hubId === formData.hubId);
       const created = await createDevice(formData);
-      created.hubName = hub?.name || `Hub #${formData.hubId}`;
+      created.hubName = hub?.hubName || `Hub #${formData.hubId}`;
       setDevices((prev) => [created, ...prev]);
       setCreateOpen(false);
     } catch (e) {

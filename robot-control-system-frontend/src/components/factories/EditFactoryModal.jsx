@@ -7,9 +7,9 @@ export default function EditFactoryModal({ open, factory, onClose, onSubmit, loa
   useEffect(() => {
     if (factory) {
       setForm({
-        name: factory.name || "",
+        name: factory.factoryName || "",
         location: factory.location || "",
-        status: factory.status || "Active",
+        status: factory.factoryStatus || "Active",
       });
     }
   }, [factory]);
@@ -24,7 +24,7 @@ export default function EditFactoryModal({ open, factory, onClose, onSubmit, loa
       return;
     }
     setError("");
-    onSubmit(factory.id, { name, location, status: form.status });
+    onSubmit(factory.factoryId, { factoryName: name, location });
   }
 
   function handleClose() {

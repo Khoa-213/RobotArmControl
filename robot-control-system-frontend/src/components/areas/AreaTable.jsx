@@ -28,23 +28,23 @@ export default function AreaTable({ areas, loading, onEdit, onDelete }) {
         <thead>
           <tr className="text-xs uppercase tracking-wider text-white/40">
             <th className="text-left font-medium px-5 py-3">Name</th>
+            <th className="text-left font-medium px-5 py-3">Description</th>
             <th className="text-left font-medium px-5 py-3">Factory</th>
-            <th className="text-left font-medium px-5 py-3">Created Date</th>
             <th className="text-left font-medium px-5 py-3">Status</th>
             <th className="text-left font-medium px-5 py-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
           {areas.map((a) => {
-            const active = String(a.status).toLowerCase() === "active";
+            const active = String(a.areaStatus).toLowerCase() === "active";
             return (
-              <tr key={a.id} className="hover:bg-white/5 transition">
+              <tr key={a.areaId} className="hover:bg-white/5 transition">
                 <td className="px-5 py-4 text-left align-top">
-                  <div className="text-white font-medium">{a.name}</div>
-                  <div className="text-xs text-white/50">ID: {a.id}</div>
+                  <div className="text-white font-medium">{a.areaName}</div>
+                  <div className="text-xs text-white/50">ID: {a.areaId}</div>
                 </td>
+                <td className="px-5 py-4 text-white/70 text-left align-top">{a.areaDescription || "—"}</td>
                 <td className="px-5 py-4 text-white/70 text-left align-top">{a.factoryName || `Factory #${a.factoryId}`}</td>
-                <td className="px-5 py-4 text-white/70 text-left align-top">{a.createdAt || "—"}</td>
                 <td className="px-5 py-4 text-left align-top"><StatusPill active={active} /></td>
                 <td className="px-5 py-4 text-left align-top">
                   <div className="flex items-center gap-2">

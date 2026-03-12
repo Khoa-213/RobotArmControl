@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import HubTable from "../../../components/hubs/HubTable";
 import CreateHubModal from "../../../components/hubs/CreateHubModal";
 import EditHubModal from "../../../components/hubs/EditHubModal";
-import { getHubs, createHub, updateHub, deleteHub } from "../../../api/hubService";
-import { getAreas } from "../../../api/areaService";
+import { getHubsByArea, createHub, updateHub, deleteHub } from "../../../api/hubService";
+import { getAreasByFactory } from "../../../api/areaService";
+import { getFactories } from "../../../api/factoryService";
 
 export default function HubsPage() {
   const [hubs, setHubs] = useState([]);
@@ -15,51 +16,72 @@ export default function HubsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      setError("");
-      const [hubsData, areasData] = await Promise.all([getHubs(), getAreas()]);
-      setHubs(Array.isArray(hubsData) ? hubsData : []);
-      setAreas(Array.isArray(areasData) ? areasData : []);
-    } catch (e) {
-      setError(e?.message || "Failed to load data");
-    } finally {
-      setLoading(false);
+ async function loadData() {
+  try {
+    setLoading(true);
+    setError("");
+    const factoriesData = await getFactories();
+    const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
+
+    const allAreas = [];
+    for (const f of factoryList) {
+      try {
+        const areasData = await getAreasByFactory(f.factoryId);
+        if (Array.isArray(areasData)) allAreas.push(...areasData);
+      } catch { /* skip */ }
     }
+    setAreas(allAreas);
+
+    const allHubs = [];
+    for (const a of allAreas) {
+      try {
+        const hubsData = await getHubsByArea(a.areaId);
+        if (Array.isArray(hubsData)) {
+          hubsData.forEach((h) => { h.areaName = a.areaName; });
+          allHubs.push(...hubsData);
+        }
+      } catch { /* skip */ }
+    }
+    setHubs(allHubs);
+  } catch (e) {
+    setError(e?.message || "Failed to load data");
+  } finally {
+    setLoading(false);
   }
+}
 
   useEffect(() => { loadData(); }, []);
 
   const canCreate = areas.length > 0;
 
   const enrichedHubs = hubs.map((h) => {
-    const area = areas.find((a) => a.id === h.areaId);
-    return { ...h, areaName: area?.name || `Area #${h.areaId}` };
+    const area = areas.find((a) => a.areaId === h.areaId);
+    return { ...h, areaName: area?.areaName || `Area #${h.areaId}` };
   });
 
-  async function handleCreate(formData) {
-    try {
-      setSaving(true);
-      setError("");
-      const area = areas.find((a) => a.id === formData.areaId);
-      const created = await createHub(formData);
-      created.areaName = area?.name || `Area #${formData.areaId}`;
-      setHubs((prev) => [created, ...prev]);
-      setCreateOpen(false);
-    } catch (e) {
-      setError(e?.message || "Failed to create hub");
-    } finally {
-      setSaving(false);
-    }
+async function handleCreate(formData) {
+  try {
+    setSaving(true);
+    setError("");
+    const { areaId, ...rest } = formData;
+    const area = areas.find((a) => a.areaId === areaId);
+    const created = await createHub(areaId, rest);
+    created.areaName = area?.areaName || `Area #${areaId}`;
+    setHubs((prev) => [created, ...prev]);
+    setCreateOpen(false);
+  } catch (e) {
+    setError(e?.response?.data?.message || e?.message || "Failed to create hub");
+  } finally {
+    setSaving(false);
   }
+}
 
   async function handleEdit(id, formData) {
     try {
       setSaving(true);
       setError("");
       const updated = await updateHub(id, formData);
-      setHubs((prev) => prev.map((h) => (h.id === id ? updated : h)));
+      setHubs((prev) => prev.map((h) => (h.hubId === id ? updated : h)));
       setEditTarget(null);
     } catch (e) {
       setError(e?.message || "Failed to update hub");
@@ -69,11 +91,11 @@ export default function HubsPage() {
   }
 
   async function handleDelete(hub) {
-    if (!window.confirm(`Delete "${hub.name}"? This action cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${hub.hubName}"? This action cannot be undone.`)) return;
     try {
       setError("");
-      await deleteHub(hub.id);
-      setHubs((prev) => prev.filter((h) => h.id !== hub.id));
+      await deleteHub(hub.hubId);
+      setHubs((prev) => prev.filter((h) => h.hubId !== hub.hubId));
     } catch (e) {
       setError(e?.message || "Failed to delete hub");
     }

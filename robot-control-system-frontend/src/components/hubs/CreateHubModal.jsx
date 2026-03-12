@@ -1,23 +1,23 @@
 import React, { useState } from "react";
 
 export default function CreateHubModal({ open, onClose, onSubmit, loading, areas }) {
-  const [form, setForm] = useState({ name: "", areaId: "", status: "Active" });
+  const [form, setForm] = useState({ hubName: "", hubDescription: "" });
   const [error, setError] = useState("");
 
   if (!open) return null;
 
   function handleSubmit() {
-    const name = form.name.trim();
-    if (!name) { setError("Name is required."); return; }
+    const hubName = form.hubName.trim();
+    if (!hubName) { setError("Hub name is required."); return; }
     if (!form.areaId) { setError("Please select an area."); return; }
     setError("");
-    onSubmit({ name, areaId: Number(form.areaId), status: form.status });
-    setForm({ name: "", areaId: "", status: "Active" });
+    onSubmit({ hubName, hubDescription: form.hubDescription, areaId: Number(form.areaId), status: form.status });
+    setForm({ hubName: "", hubDescription: "", areaId: "", status: "Active" });
   }
 
   function handleClose() {
     setError("");
-    setForm({ name: "", areaId: "", status: "Active" });
+    setForm({ hubName: "", hubDescription: "", areaId: "", status: "Active" });
     onClose();
   }
 
@@ -37,14 +37,18 @@ export default function CreateHubModal({ open, onClose, onSubmit, loading, areas
         <div className="mt-4 space-y-3">
           <label className="block">
             <div className="text-xs text-white/60 mb-1">Name</div>
-            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Hub Alpha" />
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.hubName} onChange={(e) => setForm((p) => ({ ...p, hubName: e.target.value }))} placeholder="e.g. Hub Alpha" />
+          </label>
+          <label className="block">
+            <div className="text-xs text-white/60 mb-1">Description</div>
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.hubDescription} onChange={(e) => setForm((p) => ({ ...p, hubDescription: e.target.value }))} placeholder="e.g. Main hub for the production line" />
           </label>
           <label className="block">
             <div className="text-xs text-white/60 mb-1">Area</div>
             <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.areaId} onChange={(e) => setForm((p) => ({ ...p, areaId: e.target.value }))}>
               <option className="bg-neutral-900" value="">Select an area...</option>
               {(areas || []).map((a) => (
-                <option key={a.id} className="bg-neutral-900" value={a.id}>{a.name}</option>
+                <option key={a.areaId} className="bg-neutral-900" value={a.areaId}>{a.areaName}</option>
               ))}
             </select>
           </label>
