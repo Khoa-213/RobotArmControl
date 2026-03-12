@@ -50,6 +50,10 @@ public class User implements UserDetails {
     @Builder.Default
     private UserStatus userStatus = UserStatus.Active;
 
+    @ManyToOne
+    @JoinColumn(name = "factory_id")
+    private Factory factory;
+    
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

@@ -7,6 +7,7 @@ import java.util.List;
 public interface FactoryService {
     FactoryResponse createFactory(CreateFactoryRequest request);
     List<FactoryResponse> search(String keyword);
+    List<FactoryResponse> findAll();
     FactoryResponse updateFactory(Long factoryId, UpdateFactoryRequest request);
     void deleteFactory(Long factoryId);
 }

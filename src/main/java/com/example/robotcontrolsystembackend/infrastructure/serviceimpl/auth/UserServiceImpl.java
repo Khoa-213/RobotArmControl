@@ -11,7 +11,9 @@ import com.example.robotcontrolsystembackend.common.response.PageResponse;
 import com.example.robotcontrolsystembackend.domain.enumtype.UserRole;
 import com.example.robotcontrolsystembackend.domain.enumtype.UserStatus;
 import com.example.robotcontrolsystembackend.domain.model.User;
+import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.UserRepository;
+import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.FactoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FactoryRepository factoryRepository;
 
     @Override
     @Transactional
@@ -42,12 +45,20 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.EMAIL_EXISTED, "Email already exists");
         }
         
+
+        Factory factory = null;
+        if (request.getFactoryId() != null) {
+            factory = factoryRepository.findById(request.getFactoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.FACTORY_NOT_FOUND, "Factory not found with id: " + request.getFactoryId()));
+        }
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .userStatus(request.getStatus() != null ? request.getStatus() : UserStatus.Active)
+                .factory(factory)
                 .build();
         
         User savedUser = userRepository.save(user);
@@ -97,6 +108,12 @@ public class UserServiceImpl implements UserService {
         if (request.getStatus() != null) {
             user.setUserStatus(request.getStatus());
         }
+
+        if (request.getFactoryId() != null) {
+            Factory factory = factoryRepository.findById(request.getFactoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.FACTORY_NOT_FOUND, "Factory not found with id: " + request.getFactoryId()));
+            user.setFactory(factory);
+        }
         
         User savedUser = userRepository.save(user);
         return mapToResponse(savedUser);
@@ -145,11 +162,12 @@ public class UserServiceImpl implements UserService {
 
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()
-                .userId(user.getUserId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .status(user.getUserStatus())
-                .build();
+            .userId(user.getUserId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .role(user.getRole())
+            .status(user.getUserStatus())
+            .factoryId(user.getFactory() != null ? user.getFactory().getFactoryId() : null)
+            .build();
     }
 }
