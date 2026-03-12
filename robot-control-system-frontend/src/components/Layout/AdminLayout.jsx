@@ -44,7 +44,7 @@ function AdminLayout() {
         </header>
 
         <main className="p-6">
-          <div className>
+          <div>
             <Outlet />
           </div>
         </main>
