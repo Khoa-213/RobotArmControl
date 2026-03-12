@@ -17,4 +17,5 @@ public class UserResponse {
     private String email;
     private UserRole role;
     private UserStatus status;
+    private Long factoryId;
 }

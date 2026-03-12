@@ -26,4 +26,6 @@ public class CreateUserRequest {
     private UserRole role;
 
     private UserStatus status = UserStatus.Active;
+
+    private Long factoryId;
 }

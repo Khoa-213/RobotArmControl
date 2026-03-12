@@ -119,4 +119,12 @@ public class FactoryServiceImpl implements FactoryService {
         // 3) Save
         factoryRepository.save(factory);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public List<FactoryResponse> findAll() {
+        return factoryRepository.findAll()
+            .stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+}
 }
