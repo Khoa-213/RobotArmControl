@@ -10,8 +10,8 @@ import threading
 import numpy as np
 
 # ============ CONFIGURATION ============
-API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "http://localhost:8080")
-WS_URL = os.getenv("ROBOT_WS_URL", "ws://localhost:8080/ws/robot-control")
+API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "https://robot-control-system-rmbw.onrender.com")
+WS_URL = os.getenv("ROBOT_WS_URL", "wss://robot-control-system-rmbw.onrender.com/ws/robot-control")
 
 # Camera control state
 camera_active = False
@@ -80,7 +80,7 @@ class RobotHandController:
             (-60, 60),  # J2 elbow_link
             (-90, 90),  # J3 forearm_link
             (-90, 90),  # J4 wrist_link
-            (-90, 90)   # J5 hand_link
+            (0, 45)   # J5 hand_link
         ]
         self.joint_names = [
             "J0 shoulder_link",
@@ -110,12 +110,17 @@ class RobotHandController:
         if lm[16].y < lm[14].y: fingers += 1
         if lm[20].y < lm[18].y: fingers += 1
         thumb_dx = lm[4].x - lm[2].x
+        # Thumb detection tends to be noisy when the frame is mirrored (we flip with cv2.flip)
+        # and handedness can occasionally jitter. Use handedness when available, but also
+        # include an absolute fallback so "5 fingers" is reachable reliably.
         if handedness == "Right":
-            thumb_open = thumb_dx > 0.04
+            thumb_open = thumb_dx > 0.03
         elif handedness == "Left":
-            thumb_open = thumb_dx < -0.04
+            thumb_open = thumb_dx < -0.03
         else:
-            thumb_open = abs(thumb_dx) > 0.10
+            thumb_open = abs(thumb_dx) > 0.05
+        if not thumb_open:
+            thumb_open = abs(thumb_dx) > 0.07
         if thumb_open: fingers += 1
         return fingers
 
