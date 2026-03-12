@@ -52,4 +52,10 @@ public class FactoryController {
         factoryService.deleteFactory(factoryId);
         return ApiResponse.ok("Xóa factory thành công", null);
     }
+    // Lấy tất cả factory (không search)
+@GetMapping("/all")
+public ApiResponse<List<FactoryResponse>> getAllFactories() {
+    List<FactoryResponse> results = factoryService.findAll();
+    return ApiResponse.ok("Lấy tất cả factory thành công", results);
+}
 }
