@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import DeviceTable from "../../../components/devices/DeviceTable";
 import CreateDeviceModal from "../../../components/devices/CreateDeviceModal";
 import EditDeviceModal from "../../../components/devices/EditDeviceModal";
-import { getDevices, createDevice, updateDevice, deleteDevice } from "../../../api/deviceService";
+import { getDevicesByHub, createDevice, updateDevice, deleteDevice } from "../../../api/deviceService";
 import { getHubsByArea } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
@@ -17,89 +17,95 @@ export default function DevicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
- async function loadData() {
-  try {
-    setLoading(true);
-    setError("");
+  async function loadData() {
+    try {
+      setLoading(true);
+      setError("");
 
-    // Load factories → areas → hubs
-    const factoriesData = await getFactories();
-    const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
+      const factoriesData = await getFactories();
+      const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
 
-    const allAreas = [];
-    for (const f of factoryList) {
-      try {
-        const areasData = await getAreasByFactory(f.factoryId);
-        if (Array.isArray(areasData)) allAreas.push(...areasData);
-      } catch { /* skip */ }
+      const allAreas = [];
+      for (const f of factoryList) {
+        try {
+          const areasData = await getAreasByFactory(f.factoryId);
+          if (Array.isArray(areasData)) allAreas.push(...areasData);
+        } catch { /* skip */ }
+      }
+
+      const allHubs = [];
+      for (const a of allAreas) {
+        try {
+          const hubsData = await getHubsByArea(a.areaId);
+          if (Array.isArray(hubsData)) allHubs.push(...hubsData);
+        } catch { /* skip */ }
+      }
+      setHubs(allHubs);
+
+      const allDevices = [];
+      for (const h of allHubs) {
+        try {
+          const devicesData = await getDevicesByHub(h.hubId);
+          if (Array.isArray(devicesData)) {
+            devicesData.forEach((d) => { d.hubName = h.hubName; });
+            allDevices.push(...devicesData);
+          }
+        } catch { /* skip */ }
+      }
+      setDevices(allDevices);
+    } catch (e) {
+      setError(e?.message || "Failed to load data");
+    } finally {
+      setLoading(false);
     }
-
-    const allHubs = [];
-    for (const a of allAreas) {
-      try {
-        const hubsData = await getHubsByArea(a.areaId);
-        if (Array.isArray(hubsData)) allHubs.push(...hubsData);
-      } catch { /* skip */ }
-    }
-    setHubs(allHubs);
-
-    // Load devices — deviceService vẫn mock, nên getDevices() OK
-    const devicesData = await getDevices();
-    setDevices(Array.isArray(devicesData) ? devicesData : []);
-  } catch (e) {
-    setError(e?.message || "Failed to load data");
-  } finally {
-    setLoading(false);
   }
-}
 
   useEffect(() => { loadData(); }, []);
 
   const canCreate = hubs.length > 0;
 
-  const enrichedDevices = devices.map((d) => {
-    const hub = hubs.find((h) => h.hubId === d.hubId);
-    return { ...d, hubName: hub?.hubName || `Hub #${d.hubId}` };
-  });
-
   async function handleCreate(formData) {
     try {
       setSaving(true);
       setError("");
-      const hub = hubs.find((h) => h.hubId === formData.hubId);
-      const created = await createDevice(formData);
-      created.hubName = hub?.hubName || `Hub #${formData.hubId}`;
+      const { hubId, ...rest } = formData;
+      const hub = hubs.find((h) => h.hubId === hubId);
+      const created = await createDevice(hubId, rest);
+      created.hubName = hub?.hubName || `Hub #${hubId}`;
       setDevices((prev) => [created, ...prev]);
       setCreateOpen(false);
     } catch (e) {
-      setError(e?.message || "Failed to create device");
+      setError(e?.response?.data?.message || e?.message || "Failed to create device");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleEdit(id, formData) {
+  async function handleEdit(deviceId, formData) {
     try {
       setSaving(true);
       setError("");
-      const updated = await updateDevice(id, formData);
-      setDevices((prev) => prev.map((d) => (d.id === id ? updated : d)));
+      const updated = await updateDevice(deviceId, formData);
+      setDevices((prev) => prev.map((d) => {
+        if (d.deviceId === deviceId) return { ...updated, hubName: d.hubName };
+        return d;
+      }));
       setEditTarget(null);
     } catch (e) {
-      setError(e?.message || "Failed to update device");
+      setError(e?.response?.data?.message || e?.message || "Failed to update device");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(device) {
-    if (!window.confirm(`Delete "${device.name}"? This action cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${device.deviceName}"? This action cannot be undone.`)) return;
     try {
       setError("");
-      await deleteDevice(device.id);
-      setDevices((prev) => prev.filter((d) => d.id !== device.id));
+      await deleteDevice(device.deviceId);
+      setDevices((prev) => prev.filter((d) => d.deviceId !== device.deviceId));
     } catch (e) {
-      setError(e?.message || "Failed to delete device");
+      setError(e?.response?.data?.message || e?.message || "Failed to delete device");
     }
   }
 
@@ -113,12 +119,7 @@ export default function DevicesPage() {
         </div>
 
         {canCreate ? (
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60"
-            disabled={loading}
-          >
+          <button type="button" onClick={() => setCreateOpen(true)} className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60" disabled={loading}>
             + Create Device
           </button>
         ) : (
@@ -128,35 +129,14 @@ export default function DevicesPage() {
         )}
       </div>
 
-      <CreateDeviceModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={saving}
-        hubs={hubs}
-      />
-
-      <EditDeviceModal
-        open={!!editTarget}
-        device={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        loading={saving}
-        hubs={hubs}
-      />
+      <CreateDeviceModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={saving} hubs={hubs} />
+      <EditDeviceModal open={!!editTarget} device={editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} loading={saving} />
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
-          <div className="text-xs uppercase tracking-wider text-white/50">
-            Devices List ({devices.length})
-          </div>
+          <div className="text-xs uppercase tracking-wider text-white/50">Devices List ({devices.length})</div>
         </div>
-        <DeviceTable
-          devices={enrichedDevices}
-          loading={loading}
-          onEdit={(d) => setEditTarget(d)}
-          onDelete={handleDelete}
-        />
+        <DeviceTable devices={devices} loading={loading} onEdit={(d) => setEditTarget(d)} onDelete={handleDelete} />
       </div>
     </div>
   );
