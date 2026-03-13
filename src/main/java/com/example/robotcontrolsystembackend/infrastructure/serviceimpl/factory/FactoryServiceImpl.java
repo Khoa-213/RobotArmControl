@@ -99,6 +99,9 @@ public class FactoryServiceImpl implements FactoryService {
         // 4) Cập nhật
         factory.setFactoryName(newName);
         factory.setLocation(request.getLocation() == null ? null : request.getLocation().trim());
+        if (request.getFactoryStatus() != null) {
+            factory.setFactoryStatus(request.getFactoryStatus());
+        }
 
         // 5) Save
         Factory saved = factoryRepository.save(factory);
