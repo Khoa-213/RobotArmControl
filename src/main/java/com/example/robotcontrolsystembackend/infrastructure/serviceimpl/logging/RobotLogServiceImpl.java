@@ -162,21 +162,25 @@ public class RobotLogServiceImpl implements RobotLogService {
         }
 
         if (request.getStatus() != null) {
-            RobotLatestStatus latestStatus = RobotLatestStatus.builder()
-                    .robotId(request.getRobotId())
-                    .lastEventTime(eventTime)
-                    .sessionId(request.getSessionId())
-                    .userId(request.getUserId())
-                    .factoryId(request.getFactoryId())
-                    .status(request.getStatus().name())
-                    .severity(severity.name())
-                    .source(source.name())
-                    .message(request.getMessage())
-                    .traceId(request.getTraceId())
-                    .metadataJson(metadataJson)
-                    .build();
-            latestStatusRepository.save(latestStatus);
-            savedTargets.add("robot_latest_status");
+                        if (shouldUpdateLatestStatus(request.getRobotId(), eventTime)) {
+                                RobotLatestStatus latestStatus = RobotLatestStatus.builder()
+                                                .robotId(request.getRobotId())
+                                                .lastEventTime(eventTime)
+                                                .sessionId(request.getSessionId())
+                                                .userId(request.getUserId())
+                                                .factoryId(request.getFactoryId())
+                                                .status(request.getStatus().name())
+                                                .severity(severity.name())
+                                                .source(source.name())
+                                                .message(request.getMessage())
+                                                .traceId(request.getTraceId())
+                                                .metadataJson(metadataJson)
+                                                .build();
+                                latestStatusRepository.save(latestStatus);
+                                savedTargets.add("robot_latest_status");
+                        } else {
+                                savedTargets.add("robot_latest_status_skipped_stale_event");
+                        }
         }
 
         return LogIngestResultResponse.builder()
@@ -283,4 +287,10 @@ public class RobotLogServiceImpl implements RobotLogService {
         }
         return Math.min(requested, MAX_LIMIT);
     }
+
+        private boolean shouldUpdateLatestStatus(Long robotId, Instant incomingEventTime) {
+                return latestStatusRepository.findById(robotId)
+                                .map(existing -> existing.getLastEventTime() == null || incomingEventTime.isAfter(existing.getLastEventTime()))
+                                .orElse(true);
+        }
 }

@@ -76,7 +76,6 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/logs/ingest", "/api/logs/ingest/batch").permitAll()
 
                         // ===== ADMIN ONLY =====
                         // User/Account management - ADMIN only
@@ -100,9 +99,11 @@ public class SecurityConfig {
                         // WebSocket for real-time control
                         .requestMatchers("/ws/**").permitAll()
 
+                        // ===== LOG APIS (ADMIN, OPERATOR, VIEWER) =====
+                        .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "OPERATOR", "VIEWER")
+
                         // ===== ALL AUTHENTICATED (ADMIN, OPERATOR, VIEWER) =====
                         // View logs - All authenticated users can view
-                        .requestMatchers(HttpMethod.GET, "/api/logs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/control-logs/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/gestures/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/gesture-mappings/**").authenticated()
