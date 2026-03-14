@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export default function EditFactoryModal({ open, factory, onClose, onSubmit, loading }) {
-  const [form, setForm] = useState({ name: "", location: "", status: "Active" });
+  const [form, setForm] = useState(() => ({
+    name: factory?.factoryName || "",
+    location: factory?.location || "",
+    status: factory?.factoryStatus || "Active",
+  }));
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (factory) {
-      setForm({
-        name: factory.factoryName || "",
-        location: factory.location || "",
-        status: factory.factoryStatus || "Active",
-      });
-    }
-  }, [factory]);
 
   if (!open || !factory) return null;
 
@@ -24,7 +18,10 @@ export default function EditFactoryModal({ open, factory, onClose, onSubmit, loa
       return;
     }
     setError("");
-    onSubmit(factory.factoryId, { factoryName: name, location });
+    onSubmit(factory.factoryId, { 
+      factoryName: name, 
+      location: location, 
+      factoryStatus: form.status });
   }
 
   function handleClose() {

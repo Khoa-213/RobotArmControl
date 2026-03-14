@@ -5,7 +5,14 @@ import robot from "../../assets/robot-banner.jpg";
 
 function HomePage() {
 
-  const [showLogin, setShowLogin] = useState(false);
+  const [showLogin, setShowLogin] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("login") === "1";
+    } catch {
+      return false;
+    }
+  });
 
   return (
     <div>

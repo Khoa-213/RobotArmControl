@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export default function EditHubModal({ open, hub, onClose, onSubmit, loading, areas }) {
-  const [form, setForm] = useState({ name: "", areaId: "", status: "Active" });
+  const [form, setForm] = useState(() => ({
+    hubName: hub?.hubName || "",
+    hubDescription: hub?.hubDescription || "",
+    areaId: "",
+    status: "Active",
+  }));
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (hub) {
-      setForm({
-      hubName: hub.hubName || "",
-      hubDescription: hub.hubDescription || "",
-      });
-    }
-  }, [hub]);
 
   if (!open || !hub) return null;
 

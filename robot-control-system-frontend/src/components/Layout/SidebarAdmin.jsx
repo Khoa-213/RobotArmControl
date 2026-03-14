@@ -6,7 +6,7 @@ import {
   ApartmentOutlined,
   ClusterOutlined,
   RobotOutlined,
-  LineChartOutlined,
+  VideoCameraOutlined,
 } from "@ant-design/icons";
 
 function SidebarAdmin({ collapsed }) {
@@ -19,6 +19,7 @@ function SidebarAdmin({ collapsed }) {
     { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
     { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
     { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
+    { key: "/admin/ai-camera", label: "AI Camera Control", icon: <VideoCameraOutlined /> },
     
   ];
 

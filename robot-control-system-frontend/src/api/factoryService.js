@@ -9,8 +9,8 @@ export const getFactories = async () => {
    return res.data.data;
 };
 
-export const getFactoryById = async (id) => {
-   const res = await axiosClient.get(`/api/factories/${id}`);
+export const getFactoryById = async (factoryId) => {
+   const res = await axiosClient.get(`/api/factories/${factoryId}`);
    return res.data.data;
 };
 
@@ -22,13 +22,15 @@ export const createFactory = async (data) => {
 };
 
 //put api factories, update factory
-export const updateFactory = async (id, data) => {
-   const res = await axiosClient.put(`/api/factories/${id}`, data);
+export const updateFactory = async (factoryId, data) => {
+   const res = await axiosClient.put(`/api/factories/${factoryId}`, data);
    return res.data.data;
 };
 
 //delete api factories
-export const deleteFactory = async (id) => {
-  const res = await axiosClient.delete(`/api/factories/${id}`);
+export const deleteFactory = async (factoryId) => {
+  const res = await axiosClient.delete(`/api/factories/${factoryId}`);
   return res.data.data;
 };
+
+

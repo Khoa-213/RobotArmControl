@@ -6,6 +6,8 @@ import FactoriesPage from "./pages/admin/factories/FactoriesPage";
 import AreasPage from "./pages/admin/areas/AreasPage";
 import HubsPage from "./pages/admin/hubs/HubsPage";
 import DevicesPage from "./pages/admin/devices/DevicesPage";
+import AiCameraPage from "./pages/admin/aicamera/AiCameraPage";
+import SettingsPage from "./pages/admin/settings/SettingsPage";
 import HomePage from "./pages/homepage/HomePage";
 
 function ProtectedRoute({ children }) {
@@ -33,6 +35,8 @@ function App() {
           <Route path="areas" element={<AreasPage />} />
           <Route path="hubs" element={<HubsPage />} />
           <Route path="devices" element={<DevicesPage />} />
+          <Route path="ai-camera" element={<AiCameraPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -126,6 +126,7 @@ export default function AreasPage() {
       />
 
       <EditAreaModal
+        key={editTarget?.areaId ?? "edit-area"}
         open={!!editTarget}
         area={editTarget}
         onClose={() => setEditTarget(null)}

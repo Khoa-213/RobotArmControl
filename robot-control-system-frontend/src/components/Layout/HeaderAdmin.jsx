@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import { SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { Dropdown } from "antd";
+import { LogoutOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { authApi } from "../../api/authApi";
 
 export default function HeaderAdmin({
     user = { name: "Admin", avatarUrl: "" },
-    onProfile,
     onSetting,
+    onLogout,
 }) {
     const location = useLocation();
 
@@ -15,10 +17,49 @@ export default function HeaderAdmin({
         if (path.startsWith("/admin/areas")) return "Areas";
         if (path.startsWith("/admin/hubs")) return "Hubs";
         if (path.startsWith("/admin/devices")) return "Devices";
-        if (path.startsWith("/admin/analytics")) return "Analytics";
+        if (path.startsWith("/admin/ai-camera")) return "AI Camera";
+        if (path.startsWith("/admin/settings")) return "Settings";
         if (path.startsWith("/admin/dashboard")) return "Dashboard";
         return "Management";
     }, [location.pathname]);
+
+    const menuItems = useMemo(() => {
+        return [
+            {
+                key: "settings",
+                label: "Cài đặt",
+                icon: <SettingOutlined />,
+            },
+            {
+                type: "divider",
+            },
+            {
+                key: "logout",
+                label: "Logout",
+                icon: <LogoutOutlined />,
+            },
+        ];
+    }, []);
+
+    const menu = useMemo(() => {
+        return {
+            items: menuItems,
+            onClick: ({ key }) => {
+                if (key === "settings") {
+                    onSetting?.();
+                    return;
+                }
+                if (key === "logout") {
+                    try {
+                        authApi.logout();
+                    } finally {
+                        onLogout?.();
+                        window.location.href = "/?login=1";
+                    }
+                }
+            },
+        };
+    }, [menuItems, onLogout, onSetting]);
 
     return (
         <div className="w-full flex items-center justify-between gap-4 min-w-0">
@@ -39,23 +80,24 @@ export default function HeaderAdmin({
                     <SettingOutlined />
                 </button>
 
-                <button
-                    type="button"
-                    onClick={onProfile}
-                    className="h-9 w-9 rounded-full grid place-items-center bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition overflow-hidden"
-                    aria-label="User"
-                    title={user?.name || "User"}
-                >
-                    {user?.avatarUrl ? (
-                        <img
-                            src={user.avatarUrl}
-                            alt={user?.name ? `${user.name} avatar` : "User avatar"}
-                            className="h-full w-full object-cover"
-                        />
-                    ) : (
-                        <UserOutlined />
-                    )}
-                </button>
+                <Dropdown trigger={["click"]} menu={menu} placement="bottomRight">
+                    <button
+                        type="button"
+                        className="h-9 w-9 rounded-full grid place-items-center bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition overflow-hidden"
+                        aria-label="User"
+                        title={user?.name || "User"}
+                    >
+                        {user?.avatarUrl ? (
+                            <img
+                                src={user.avatarUrl}
+                                alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <UserOutlined />
+                        )}
+                    </button>
+                </Dropdown>
             </div>
         </div>
     );

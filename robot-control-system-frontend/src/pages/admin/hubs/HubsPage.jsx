@@ -135,6 +135,7 @@ async function handleCreate(formData) {
       />
 
       <EditHubModal
+        key={editTarget?.hubId ?? "edit-hub"}
         open={!!editTarget}
         hub={editTarget}
         onClose={() => setEditTarget(null)}

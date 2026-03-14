@@ -99,6 +99,7 @@ export default function FactoriesPage() {
       />
 
       <EditFactoryModal
+        key={editTarget?.factoryId ?? "edit-factory"}
         open={!!editTarget}
         factory={editTarget}
         onClose={() => setEditTarget(null)}

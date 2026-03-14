@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export default function EditAreaModal({ open, area, onClose, onSubmit, loading }) {
-  const [form, setForm] = useState({ areaName: "", areaDescription: "" });
+  const [form, setForm] = useState(() => ({
+    areaName: area?.areaName || "",
+    areaDescription: area?.areaDescription || "",
+  }));
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (area) {
-      setForm({
-        areaName: area.areaName || "",
-        areaDescription: area.areaDescription || "",
-      });
-    }
-  }, [area]);
 
   if (!open || !area) return null;
 
