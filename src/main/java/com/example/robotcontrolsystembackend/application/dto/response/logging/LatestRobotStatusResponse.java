@@ -1,5 +1,6 @@
 package com.example.robotcontrolsystembackend.application.dto.response.logging;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.example.robotcontrolsystembackend.domain.enumtype.LogSeverity;
 import com.example.robotcontrolsystembackend.domain.enumtype.LogSource;
 import com.example.robotcontrolsystembackend.domain.enumtype.RobotStatus;
@@ -28,5 +29,6 @@ public class LatestRobotStatusResponse {
     private String message;
     private String traceId;
     private Object metadata;
+    @JsonIgnore
     private String metadataRaw;
 }
