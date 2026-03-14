@@ -23,10 +23,34 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("SELECT u FROM User u WHERE " +
            "(:role IS NULL OR u.role = :role) AND " +
            "(:status IS NULL OR u.userStatus = :status) AND " +
-           "(:search IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(COALESCE(:search, '') = '' OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))")
     Page<User> findAllWithFilters(
             @Param("role") UserRole role,
             @Param("status") UserStatus status,
             @Param("search") String search,
             Pageable pageable);
+
+    @Query(
+           value = "SELECT u.* FROM \"user\" u WHERE " +
+                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
+                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
+                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%')) " +
+                  "ORDER BY u.user_id",
+           countQuery = "SELECT COUNT(*) FROM \"user\" u WHERE " +
+                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
+                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
+                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%'))",
+           nativeQuery = true
+    )
+    Page<User> findAllWithFiltersBytea(
+           @Param("role") String role,
+           @Param("status") String status,
+           @Param("search") String search,
+           Pageable pageable);
 }
