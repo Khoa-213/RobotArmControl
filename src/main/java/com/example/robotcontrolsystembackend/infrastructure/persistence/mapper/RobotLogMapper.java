@@ -41,7 +41,8 @@ public class RobotLogMapper {
             return null;
         }
         try {
-            return objectMapper.readTree(metadataJson);
+            // Parse into plain Java types (Map/List/primitive) for clean API JSON output.
+            return objectMapper.readValue(metadataJson, Object.class);
         } catch (Exception ex) {
             return metadataJson;
         }
