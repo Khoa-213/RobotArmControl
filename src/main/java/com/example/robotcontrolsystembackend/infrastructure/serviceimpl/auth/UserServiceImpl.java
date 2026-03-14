@@ -15,7 +15,9 @@ import com.example.robotcontrolsystembackend.domain.model.Factory;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.UserRepository;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.FactoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -74,11 +76,39 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResponse<UserResponse> getAllUsers(Pageable pageable, UserRole role, UserStatus status, String search) {
-        Page<User> userPage = userRepository.findAllWithFilters(role, status, search, pageable);
+        Page<User> userPage;
+        try {
+            userPage = userRepository.findAllWithFilters(role, status, search, pageable);
+        } catch (DataAccessException ex) {
+            if (!isLowerByteaError(ex)) {
+                throw ex;
+            }
+
+            String roleValue = role != null ? role.name() : null;
+            String statusValue = status != null ? status.name() : null;
+            Pageable unsortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            userPage = userRepository.findAllWithFiltersBytea(roleValue, statusValue, search, unsortedPageable);
+        }
         List<UserResponse> content = userPage.getContent().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
         return PageResponse.of(userPage, content);
+    }
+
+    private boolean isLowerByteaError(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null) {
+                String lowerMessage = message.toLowerCase();
+                if (lowerMessage.contains("function lower(bytea) does not exist")
+                        || lowerMessage.contains("could not determine data type of parameter")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     @Override
