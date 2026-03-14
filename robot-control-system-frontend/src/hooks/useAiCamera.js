@@ -13,6 +13,11 @@ const JOINT_LIMITS = [
 ];
 
 const SPEEDS_DEG_PER_SEC = [120, 90, 90, 100, 100, 100];
+const MODE_HOLD_MS = 300;
+
+const SELFIE_MODE = String(import.meta.env.VITE_AI_CAMERA_SELFIE_MODE || "1") !== "0";
+const DEADZONE = 0.08;
+const MAX_OFFSET = 0.35;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -21,8 +26,8 @@ function clamp(value, min, max) {
 function normalizePalmX(palmX) {
   // Map palmX (0..1) -> control (-1..1) with a small deadzone
   const controlSignal = palmX - 0.5;
-  const deadzone = 0.08;
-  const maxOffset = 0.35;
+  const deadzone = DEADZONE;
+  const maxOffset = MAX_OFFSET;
 
   if (Math.abs(controlSignal) < deadzone) return 0;
   const sign = controlSignal > 0 ? 1 : -1;
@@ -44,6 +49,46 @@ function computePalmCenterX(landmarks) {
   return count ? sum / count : null;
 }
 
+function maybeMirror01(x) {
+  if (x == null) return null;
+  return SELFIE_MODE ? 1 - x : x;
+}
+
+function countFingers(landmarks, handedness) {
+  if (!landmarks || landmarks.length < 21) return 0;
+
+  let fingers = 0;
+  // In MediaPipe, y increases downward; "open" means tip is above pip.
+  if (landmarks[8].y < landmarks[6].y) fingers += 1;
+  if (landmarks[12].y < landmarks[10].y) fingers += 1;
+  if (landmarks[16].y < landmarks[14].y) fingers += 1;
+  if (landmarks[20].y < landmarks[18].y) fingers += 1;
+
+  const thumbDx = landmarks[4].x - landmarks[2].x;
+  let thumbOpen;
+  if (handedness === "Right") {
+    thumbOpen = thumbDx > 0.03;
+  } else if (handedness === "Left") {
+    thumbOpen = thumbDx < -0.03;
+  } else {
+    thumbOpen = Math.abs(thumbDx) > 0.05;
+  }
+
+  if (!thumbOpen) {
+    thumbOpen = Math.abs(thumbDx) > 0.07;
+  }
+
+  if (thumbOpen) fingers += 1;
+  return fingers;
+}
+
+function getHandedness(results) {
+  const raw = results?.multiHandedness?.[0]?.label;
+  if (raw === "Left" || raw === "Right") return raw;
+  return null;
+}
+
+
 export function useAiCamera() {
   const videoRef = useRef(null);
 
@@ -53,6 +98,8 @@ export function useAiCamera() {
   const [isSendingAngles, setIsSendingAngles] = useState(false);
   const [angles, setAngles] = useState(() => [0, 0, 0, 0, 0, 0]);
   const [error, setError] = useState("");
+  const [selectedJoint, setSelectedJoint] = useState(0);
+  const [fingersCount, setFingersCount] = useState(0);
 
   const role = useMemo(() => String(localStorage.getItem("role") || "").toUpperCase(), []);
   const isViewer = role === "VIEWER";
@@ -60,20 +107,38 @@ export function useAiCamera() {
   const wsConnectedRef = useRef(false);
   const sessionActiveRef = useRef(false);
   const runningRef = useRef(false);
+  const isSendingAnglesRef = useRef(false);
+
+  const debugRef = useRef({
+    landmarks: null,
+    handednessRaw: null,
+    palmX: null, // raw filtered (0..1) in video coords
+    control: 0,
+  });
 
   const anglesRef = useRef([0, 0, 0, 0, 0, 0]);
   const lastTickRef = useRef(0);
   const lastSendRef = useRef(0);
   const palmXFilteredRef = useRef(null);
 
+  const selectedJointRef = useRef(0);
+  const pendingJointRef = useRef(0);
+  const pendingSinceRef = useRef(0);
+  const lastUiSelectedJointRef = useRef(0);
+  const lastUiFingersCountRef = useRef(0);
+
   const streamRef = useRef(null);
   const handsRef = useRef(null);
   const rafRef = useRef(0);
+
+  const consecutiveSendErrorsRef = useRef(0);
+  const sendErrorShownRef = useRef(false);
 
   const wsServiceRef = useRef(null);
 
   function stopLocal() {
     runningRef.current = false;
+    isSendingAnglesRef.current = false;
     setIsSendingAngles(false);
     setIsCameraRunning(false);
 
@@ -169,12 +234,17 @@ export function useAiCamera() {
 
   function initHands() {
     const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      locateFile: (file) => {
+        const base = import.meta.env.VITE_MEDIAPIPE_ASSETS_BASE_URL;
+        if (base) return `${String(base).replace(/\/$/, "")}/${file}`;
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+      },
     });
 
     hands.setOptions({
       maxNumHands: 1,
       modelComplexity: 1,
+      selfieMode: false,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
@@ -190,30 +260,61 @@ export function useAiCamera() {
       const landmarks = results?.multiHandLandmarks?.[0];
       if (!landmarks) return;
 
-      const palmX = computePalmCenterX(landmarks);
-      if (palmX == null) return;
+      debugRef.current.landmarks = landmarks;
+
+      // Python-style: count fingers -> choose joint (0..5), only switch if held for MODE_HOLD_MS
+      const handednessRaw = getHandedness(results);
+      debugRef.current.handednessRaw = handednessRaw;
+
+      const fingersCount = countFingers(landmarks, handednessRaw);
+      const targetJoint = clamp(fingersCount, 0, 5);
+      if (targetJoint !== pendingJointRef.current) {
+        pendingJointRef.current = targetJoint;
+        pendingSinceRef.current = now;
+      } else {
+        if (now - pendingSinceRef.current >= MODE_HOLD_MS) {
+          selectedJointRef.current = pendingJointRef.current;
+        }
+      }
+
+      if (lastUiFingersCountRef.current !== fingersCount) {
+        lastUiFingersCountRef.current = fingersCount;
+        setFingersCount(fingersCount);
+      }
+      if (lastUiSelectedJointRef.current !== selectedJointRef.current) {
+        lastUiSelectedJointRef.current = selectedJointRef.current;
+        setSelectedJoint(selectedJointRef.current);
+      }
+
+      const palmXRaw = computePalmCenterX(landmarks);
+      if (palmXRaw == null) return;
 
       // low-pass filter to reduce jitter
       const alpha = 0.25;
       const prev = palmXFilteredRef.current;
-      const filtered = prev == null ? palmX : prev + alpha * (palmX - prev);
-      palmXFilteredRef.current = filtered;
+      const filteredRaw = prev == null ? palmXRaw : prev + alpha * (palmXRaw - prev);
+      palmXFilteredRef.current = filteredRaw;
 
-      const control = normalizePalmX(filtered);
+      debugRef.current.palmX = filteredRaw;
 
-      // integrate angle changes
+      const filteredForControl = maybeMirror01(filteredRaw);
+      if (filteredForControl == null) return;
+
+      const control = normalizePalmX(filteredForControl);
+      debugRef.current.control = control;
+
+      // Python-style: integrate ONLY the selected joint
       const next = anglesRef.current.slice(0, 6);
-      for (let i = 0; i < 6; i += 1) {
-        const [minL, maxL] = JOINT_LIMITS[i];
-        const speed = SPEEDS_DEG_PER_SEC[i];
-        next[i] = clamp(next[i] + control * speed * dt, minL, maxL);
-      }
+      const j = clamp(selectedJointRef.current, 0, 5);
+      const [minL, maxL] = JOINT_LIMITS[j];
+      const speed = SPEEDS_DEG_PER_SEC[j];
+      next[j] = clamp(next[j] + control * speed * dt, minL, maxL);
 
       anglesRef.current = next;
 
       // send at ~20 msg/s
       const sendIntervalMs = 50;
-      if (isSendingAngles && wsConnectedRef.current) {
+      if (isSendingAnglesRef.current && wsConnectedRef.current) {
         if (now - lastSendRef.current >= sendIntervalMs) {
           lastSendRef.current = now;
           const svc = wsServiceRef.current;
@@ -235,8 +336,17 @@ export function useAiCamera() {
       if (!runningRef.current) return;
       try {
         await hands.send({ image: v });
-      } catch {
-        // ignore per-frame errors
+        consecutiveSendErrorsRef.current = 0;
+      } catch (e) {
+        consecutiveSendErrorsRef.current += 1;
+        if (consecutiveSendErrorsRef.current >= 10 && !sendErrorShownRef.current) {
+          sendErrorShownRef.current = true;
+          setError(
+            "Hand tracking failed to run. Possible cause: MediaPipe assets blocked/unreachable (CDN) or insecure context. " +
+              "Open DevTools Console/Network for details. " +
+              (e?.message ? `(${e.message})` : "")
+          );
+        }
       }
       rafRef.current = requestAnimationFrame(frame);
     }
@@ -270,14 +380,25 @@ export function useAiCamera() {
     // reset angles before run
     anglesRef.current = [0, 0, 0, 0, 0, 0];
     setAngles([0, 0, 0, 0, 0, 0]);
+    selectedJointRef.current = 0;
+    pendingJointRef.current = 0;
+    pendingSinceRef.current = performance.now();
+    lastUiSelectedJointRef.current = 0;
+    lastUiFingersCountRef.current = 0;
+    setSelectedJoint(0);
+    setFingersCount(0);
     lastTickRef.current = performance.now();
     lastSendRef.current = 0;
     palmXFilteredRef.current = null;
 
-    initHands();
+    consecutiveSendErrorsRef.current = 0;
+    sendErrorShownRef.current = false;
 
     runningRef.current = true;
+    isSendingAnglesRef.current = true;
     setIsSendingAngles(true);
+
+    initHands();
     await startLoop();
   }
 
@@ -323,6 +444,12 @@ export function useAiCamera() {
     isCameraRunning,
     isSendingAngles,
     angles,
+    selectedJoint,
+    fingersCount,
+    selfieMode: SELFIE_MODE,
+    deadzone: DEADZONE,
+    maxOffset: MAX_OFFSET,
+    debugRef,
     error,
     start,
     stop,
