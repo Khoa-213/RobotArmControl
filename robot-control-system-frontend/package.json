@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/hands": "^0.4.1675469240",
     "antd": "^6.2.2",
+    "axios": "^1.13.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"

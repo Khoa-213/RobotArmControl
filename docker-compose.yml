@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -14,7 +12,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/robotdb
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-postgres}
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - JWT_SECRET=${JWT_SECRET}
+      - ASTRA_TOKEN=${ASTRA_TOKEN}
+      - SCB_PATH=/app/secrets/secure-connect-robot-control-log.zip
+    volumes:
+      - ./secrets:/app/secrets:ro
     depends_on:
       db:
         condition: service_healthy
@@ -22,7 +24,7 @@ services:
       - robot-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v3/api-docs"]
       interval: 30s
       timeout: 10s
       retries: 3

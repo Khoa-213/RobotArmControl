@@ -1,4 +1,56 @@
 package com.example.robotcontrolsystembackend.infrastructure.persistence.repository;
 
-public interface UserRepository {
+import com.example.robotcontrolsystembackend.domain.enumtype.UserRole;
+import com.example.robotcontrolsystembackend.domain.enumtype.UserStatus;
+import com.example.robotcontrolsystembackend.domain.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    
+    @Query("SELECT u FROM User u WHERE " +
+           "(:role IS NULL OR u.role = :role) AND " +
+           "(:status IS NULL OR u.userStatus = :status) AND " +
+           "(COALESCE(:search, '') = '' OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))")
+    Page<User> findAllWithFilters(
+            @Param("role") UserRole role,
+            @Param("status") UserStatus status,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query(
+           value = "SELECT u.* FROM \"user\" u WHERE " +
+                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
+                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
+                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%')) " +
+                  "ORDER BY u.user_id",
+           countQuery = "SELECT COUNT(*) FROM \"user\" u WHERE " +
+                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
+                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
+                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%'))",
+           nativeQuery = true
+    )
+    Page<User> findAllWithFiltersBytea(
+           @Param("role") String role,
+           @Param("status") String status,
+           @Param("search") String search,
+           Pageable pageable);
 }

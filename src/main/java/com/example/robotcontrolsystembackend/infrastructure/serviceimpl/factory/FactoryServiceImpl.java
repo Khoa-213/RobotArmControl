@@ -99,6 +99,9 @@ public class FactoryServiceImpl implements FactoryService {
         // 4) Cập nhật
         factory.setFactoryName(newName);
         factory.setLocation(request.getLocation() == null ? null : request.getLocation().trim());
+        if (request.getFactoryStatus() != null) {
+            factory.setFactoryStatus(request.getFactoryStatus());
+        }
 
         // 5) Save
         Factory saved = factoryRepository.save(factory);
@@ -119,4 +122,12 @@ public class FactoryServiceImpl implements FactoryService {
         // 3) Save
         factoryRepository.save(factory);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public List<FactoryResponse> findAll() {
+        return factoryRepository.findAll()
+            .stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+}
 }

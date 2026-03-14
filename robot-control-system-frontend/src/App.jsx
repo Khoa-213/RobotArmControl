@@ -2,24 +2,44 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./components/Layout/AdminLayout";
 import DashboardPage from "./pages/admin/dashboard/DashboardPage";
-import ControlPage from "./pages/admin/control/ControlPage";
+import FactoriesPage from "./pages/admin/factories/FactoriesPage";
+import AreasPage from "./pages/admin/areas/AreasPage";
+import HubsPage from "./pages/admin/hubs/HubsPage";
+import DevicesPage from "./pages/admin/devices/DevicesPage";
+import AiCameraPage from "./pages/admin/aicamera/AiCameraPage";
 import SettingsPage from "./pages/admin/settings/SettingsPage";
+import HomePage from "./pages/homepage/HomePage";
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+  return token ? children : <Navigate to="/" replace />;
+}
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Giữ dashboard làm trang mặc định */}
-        <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/" element={<HomePage />} />
 
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="control" element={<ControlPage />} />
+          <Route path="factories" element={<FactoriesPage />} />
+          <Route path="areas" element={<AreasPage />} />
+          <Route path="hubs" element={<HubsPage />} />
+          <Route path="devices" element={<DevicesPage />} />
+          <Route path="ai-camera" element={<AiCameraPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

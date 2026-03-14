@@ -1,193 +1,105 @@
-import React,  {useMemo, useState} from "react";
-//import component từ Antd
-import { Input, Avatar, Dropdown, Space, List, Typography, Modal} from "antd";
-//import icon 
-import {
-    UserOutlined,
-    SettingOutlined,
-    LogoutOutlined,
-    SearchOutlined,
-} from "@ant-design/icons";
-//import logo
-import logo from "../../assets/logo.jpg";
-
-
-//lấy component Text từ Typography
-const{Text}= Typography;
+import React, { useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { Dropdown } from "antd";
+import { LogoutOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { authApi } from "../../api/authApi";
 
 export default function HeaderAdmin({
+    user = { name: "Admin", avatarUrl: "" },
+    onSetting,
+    onLogout,
+}) {
+    const location = useLocation();
 
-    //props truyền từ AdminLayout xuống 
-    factories = [], // dsach factories được hardcode ở đây
-    onSelectFactory, // hàm callback khi chọn factory 
-    user = {name: "Admin", avatarUrl:""},// in4 user
-    onProfile, //xử lý khi click vào thông tin 
-    onSetting, //xử lý khi  click vào cài đặt 
-    onLogout, //xử lý khi click vào đăng xuất
-}){
+    const crumb = useMemo(() => {
+        const path = location.pathname;
+        if (path.startsWith("/admin/factories")) return "Factories";
+        if (path.startsWith("/admin/areas")) return "Areas";
+        if (path.startsWith("/admin/hubs")) return "Hubs";
+        if (path.startsWith("/admin/devices")) return "Devices";
+        if (path.startsWith("/admin/ai-camera")) return "AI Camera";
+        if (path.startsWith("/admin/settings")) return "Settings";
+        if (path.startsWith("/admin/dashboard")) return "Dashboard";
+        return "Management";
+    }, [location.pathname]);
 
-    const [q, setQ] = useState("");
-    //q :keyword search, setQ: update keyword
-    
-    const [openResult, setOpenResult] = useState(false);
-    //openResult : trạng thái đóng mở của modal kết quả search
-    //setOpentResult : hàm update trạng thái đóng/mở của modal 
+    const menuItems = useMemo(() => {
+        return [
+            {
+                key: "settings",
+                label: "Cài đặt",
+                icon: <SettingOutlined />,
+            },
+            {
+                type: "divider",
+            },
+            {
+                key: "logout",
+                label: "Logout",
+                icon: <LogoutOutlined />,
+            },
+        ];
+    }, []);
 
-    const results = useMemo(()=> {
-        //results : là dsach các fatory sau khi lọc
-        const keyword = q.trim().toLowerCase();
-         if(!keyword) return[]; //nếu ko có kw thì ko lọc 
+    const menu = useMemo(() => {
+        return {
+            items: menuItems,
+            onClick: ({ key }) => {
+                if (key === "settings") {
+                    onSetting?.();
+                    return;
+                }
+                if (key === "logout") {
+                    try {
+                        authApi.logout();
+                    } finally {
+                        onLogout?.();
+                        window.location.href = "/?login=1";
+                    }
+                }
+            },
+        };
+    }, [menuItems, onLogout, onSetting]);
 
-         //lọc factory theo name 
-         return factories.filter((factory)=>
-         (factory.name || "").toLowerCase().includes(keyword)
-        );
-        
-    }, [q, factories])// hàm useMemo chỉ chạy lại khi q/factories thay đổi 
-
-    //dropdown table cho mục avatar 
-     const avatarDropdown = (
-        <div style={{width: 200, background: "#fff", borderRadius: 8, padding:8,}}>
-            <List
-                size="small" 
-                dataSource={[
-                    {
-                        key:"profile",
-                        icon: <UserOutlined />,
-                        label: "Thông tin",
-                        onClick: onProfile,
-                    },
-                    {
-                        key:"setting",
-                        icon: <SettingOutlined />,
-                        label:"Cài đặt",
-                        onClick: onSetting,
-                    },
-                    {
-                        key:"logout",
-                        icon: <LogoutOutlined />,
-                        label:"Đăng xuất",
-                        onClick: onLogout,
-                    },
-                ]}
-                renderItem={(item)=> (
-                    <List.Item
-                       style={{
-                        cursor:"pointer",
-                        borderRadius:6,
-                        padding: "8px 10px",
-                       }}
-                       onClick={() => item.onClick?.()} //gọi hàm callBack
-                       >
-                        <Space>
-                            {item.icon}
-                            <Text type={item.danger ? "danger" : undefined} >
-                                {item.label}
-                            </Text>
-                        </Space>
-
-                    </List.Item>
-                )}
-            />
-
-        </div>
-     );
-
-     return(
-        <>
-         {/* Header content */}
-         <div
-            style={{
-                padding: "0 16px",
-                background:"#ffffff",
-                top: 0,
-                zIndex: 100,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 16,
-            }}
-            >
-                {/*Logo*/}
-                <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                    <img src={logo} alt="Logo" style={{height: 40, width: 40}}/>
-                    <Text strong style={{fontSize: 18, color: "#000000"}}>Robot Control</Text>
+    return (
+        <div className="w-full flex items-center justify-between gap-4 min-w-0">
+            <div className="min-w-0">
+                <div className="text-sm font-semibold text-white">Robot Arm Admin</div>
+                <div className="text-xs text-white/60 truncate">
+                    Management <span className="mx-2 text-white/30">/</span> {crumb}
                 </div>
-                {/*Search factory*/}
-                <div style={{ width: 420, maxWidth: "60vw", marginLeft: 60}}>
-                    <Input.Search
-                        className="header-search"
-                        value={q}
-                        allowClear
-                        placeholder="Tìm kiếm nhà máy"
-                        enterButton={<SearchOutlined />}
-                        onChange={(e) => setQ(e.target.value)}
-                        onSearch={() => {
-                        if (q.trim()) setOpenResult(true);
-                        }}
-                     />
-                     </div>
-                    {/*Avater & Dropdown*/}
-                    <Dropdown
-                        popupRender={() => avatarDropdown}
-                        trigger={["click"]} //click để mở 
-                        placement="bottomRight" 
+            </div>
+
+            <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={onSetting}
+                    className="h-9 w-9 rounded-full grid place-items-center bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition"
+                    aria-label="Settings"
+                >
+                    <SettingOutlined />
+                </button>
+
+                <Dropdown trigger={["click"]} menu={menu} placement="bottomRight">
+                    <button
+                        type="button"
+                        className="h-9 w-9 rounded-full grid place-items-center bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition overflow-hidden"
+                        aria-label="User"
+                        title={user?.name || "User"}
                     >
-                        <div style={{cursor:"pointer", marginRight: 30}}>
-                            <Space>
-                                <Avatar
-                                    src={user.avatarUrl || undefined}
-                                    icon={!user.avatarUrl ? <UserOutlined /> : undefined}
-                                />
-                                <span style={{ fontWeight: 600, color:"#111"}}>
-                                    {user.name || "Admin"}
-                                </span>
-                            </Space>
-
-                        </div>
-                    </Dropdown>
-                     </div>
-
-                    {/*Modal cho kết quả search*/}
-                     <Modal 
-                     title={`Kết quả tìm kiếm: "${q.trim()}"`}
-                     open={openResult} //mở modal
-                     onCancel={() => setOpenResult(false)}//đóng modal
-                     footer={null}//vì ko cần footer
-                     >
-                        {results.length === 0 ? (
-                            <Text type="secondary">
-                                Không tìm thấy nhà máy nào.
-                            </Text>
+                        {user?.avatarUrl ? (
+                            <img
+                                src={user.avatarUrl}
+                                alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                                className="h-full w-full object-cover"
+                            />
                         ) : (
-                            <List
-                               bordered
-                               dataSource={results} //dsach kết quả
-                               renderItem={(f) => (
-                                <List.Item
-                                   style={{cursor:"pointer"}}
-                                   onClick={() => {
-                                    onSelectFactory?.(f); 
-                                    setOpenResult(false);
-                                   }}>
-                                   <Space direction="vertical" size={0}>
-                                         <Text strong> {f.name} </Text>
-                                         <Text type="secondary" style={{fontSize: 12}}>
-                                            {f.location || "-" } - {f.status || "Hoạt động"}
-                                         </Text>
-                                    </Space> 
-
-                                </List.Item>
-                               )}
-                               />
-
+                            <UserOutlined />
                         )}
-
-                     </Modal>
-                
-        
-        </>
-
-     );
+                    </button>
+                </Dropdown>
+            </div>
+        </div>
+    );
 }
 
