@@ -1,7 +1,5 @@
-// File: lib/main.dart
 import 'package:flutter/material.dart';
-import 'screens/main_screen.dart'; // Chỉ cần gọi MainScreen vào đây
-
+import 'screens/api_login_screen.dart';
 
 void main() => runApp(const RobotControlApp());
 
@@ -12,8 +10,26 @@ class RobotControlApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primaryColor: const Color(0xFF0091FF)),
-      home: const MainScreen(),
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: const ColorScheme.light(
+          primary: Colors.black,
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0.5,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.grey,
+        ),
+      ),
+      home: const ApiLoginScreen(),
     );
   }
 }
