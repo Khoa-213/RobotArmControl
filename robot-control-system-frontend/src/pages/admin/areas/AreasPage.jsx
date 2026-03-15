@@ -5,15 +5,19 @@ import AreaTable from "../../../components/areas/AreaTable";
 import CreateAreaModal from "../../../components/areas/CreateAreaModal";
 import EditAreaModal from "../../../components/areas/EditAreaModal";
 import { getAreasByFactory, createArea, updateArea, deleteArea } from "../../../api/areaService";
-import { getFactories } from "../../../api/factoryService";
-import { getRole, isAdminRole } from "../../../utils/auth";
+import { getFactories, getFactoryById } from "../../../api/factoryService";
+import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
 export default function AreasPage() {
   const canManage = isAdminRole(getRole());
+  const isOperator = isOperatorRole(getRole());
+  const operatorFactoryId = getFactoryId();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedFactoryIdRaw = searchParams.get("factoryId");
-  const selectedFactoryId = selectedFactoryIdRaw ? Number(selectedFactoryIdRaw) : null;
+  const selectedFactoryId = isOperator
+    ? (operatorFactoryId || null)
+    : (selectedFactoryIdRaw ? Number(selectedFactoryIdRaw) : null);
 
   const [areas, setAreas] = useState([]);
   const [factories, setFactories] = useState([]);
@@ -28,6 +32,17 @@ export default function AreasPage() {
     try {
       setLoading(true);
       setError("");
+      if (isOperator) {
+        if (!operatorFactoryId) {
+          setFactories([]);
+          setError("No factory is assigned to this operator.");
+          return;
+        }
+        const factory = await getFactoryById(operatorFactoryId);
+        setFactories(factory ? [factory] : []);
+        return;
+      }
+
       const factoriesData = await getFactories();
       const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
       setFactories(factoryList);
@@ -192,14 +207,16 @@ export default function AreasPage() {
             <div className="text-xs uppercase tracking-wider text-white/50">
               Areas for {selectedFactory?.factoryName || `Factory #${selectedFactoryId}`} ({areas.length})
             </div>
-            <button
-              type="button"
-              className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
-              onClick={() => setSearchParams({})}
-              disabled={loading}
-            >
-              Change Factory
-            </button>
+            {!isOperator && (
+              <button
+                type="button"
+                className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
+                onClick={() => setSearchParams({})}
+                disabled={loading}
+              >
+                Change Factory
+              </button>
+            )}
           </div>
           <AreaTable
             areas={areas}

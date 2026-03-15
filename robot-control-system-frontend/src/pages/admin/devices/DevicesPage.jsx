@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import HubTable from "../../../components/hubs/HubTable";
 import DeviceTable from "../../../components/devices/DeviceTable";
 import CreateDeviceModal from "../../../components/devices/CreateDeviceModal";
@@ -8,10 +9,13 @@ import { getDevicesByHub, createDevice, updateDevice, deleteDevice } from "../..
 import { getHubsByArea } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
-import { getRole, isAdminRole } from "../../../utils/auth";
+import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
 export default function DevicesPage() {
   const canManage = isAdminRole(getRole());
+  const isOperator = isOperatorRole(getRole());
+  const navigate = useNavigate();
+  const operatorFactoryId = getFactoryId();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedHubIdRaw = searchParams.get("hubId");
@@ -26,10 +30,46 @@ export default function DevicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
+  const [sessionSelectedDeviceId, setSessionSelectedDeviceId] = useState(() => {
+    const raw = sessionStorage.getItem("robotSession.deviceId");
+    if (raw == null || String(raw).trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  });
+
   async function loadHubs() {
     try {
       setLoading(true);
       setError("");
+
+      if (isOperator) {
+        if (!operatorFactoryId) {
+          setHubs([]);
+          setError("No factory is assigned to this operator.");
+          return;
+        }
+
+        const areasData = await getAreasByFactory(operatorFactoryId);
+        const areas = Array.isArray(areasData) ? areasData : [];
+
+        const allHubs = [];
+        for (const a of areas) {
+          try {
+            const hubsData = await getHubsByArea(a.areaId);
+            if (Array.isArray(hubsData)) {
+              hubsData.forEach((h) => {
+                h.areaName = a.areaName;
+              });
+              allHubs.push(...hubsData);
+            }
+          } catch {
+            /* skip */
+          }
+        }
+
+        setHubs(allHubs);
+        return;
+      }
 
       const factoriesData = await getFactories();
       const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
@@ -158,12 +198,23 @@ export default function DevicesPage() {
 
   const selectedHub = selectedHubId ? hubs.find((h) => h.hubId === selectedHubId) : null;
 
+  function handleSelectDevice(device) {
+    if (!device?.deviceId) return;
+    sessionStorage.setItem("robotSession.deviceId", String(device.deviceId));
+    setSessionSelectedDeviceId(device.deviceId);
+    
+    if (isOperator) {
+      navigate("/admin/ai-camera");
+    }
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-white text-left">Devices</h1>
           <p className="mt-1 text-sm text-white/60">Manage devices within your hubs</p>
+          <div className="mt-2 text-xs text-white/50">Selected Device: {sessionSelectedDeviceId ?? "—"}</div>
           {error && <div className="mt-2 text-sm text-red-300">{error}</div>}
         </div>
 
@@ -214,6 +265,7 @@ export default function DevicesPage() {
             loading={loading}
             onEdit={canManage ? (d) => setEditTarget(d) : undefined}
             onDelete={canManage ? handleDelete : undefined}
+            onRowClick={handleSelectDevice}
           />
         </div>
       )}
