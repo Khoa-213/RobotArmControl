@@ -21,10 +21,8 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
     private static final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-
     private static final String ATTR_LAST_AI_ANGLES_LOG_MS = "lastAiAnglesLogMs";
     private static final long AI_ANGLES_LOG_INTERVAL_MS = 1000;
-
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -45,7 +43,6 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
 
-
         String type = null;
         Integer anglesLen = null;
         try {
@@ -64,7 +61,6 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
             // Not JSON; ignore
         }
 
-
         if ("ai_angles".equals(type)) {
             long now = System.currentTimeMillis();
             Object lastObj = session.getAttributes().get(ATTR_LAST_AI_ANGLES_LOG_MS);
@@ -81,7 +77,6 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
         } else {
             log.debug("WS recv: fromId={} payload={}", session.getId(), payload);
         }
-
 
         // Broadcast to all clients (Unity, Frontend, etc.)
         for (WebSocketSession s : sessions) {

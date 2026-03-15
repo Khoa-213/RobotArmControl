@@ -22,6 +22,7 @@ export default function HeaderAdmin({
         if (path.startsWith("/admin/areas")) return "Areas";
         if (path.startsWith("/admin/hubs")) return "Hubs";
         if (path.startsWith("/admin/devices")) return "Devices";
+        if (path.startsWith("/admin/users")) return "Users";
         if (path.startsWith("/admin/ai-camera")) return "AI Camera";
         if (path.startsWith("/admin/settings")) return "Settings";
         if (path.startsWith("/admin/dashboard")) return isOperator ? "Logs" : "Dashboard";

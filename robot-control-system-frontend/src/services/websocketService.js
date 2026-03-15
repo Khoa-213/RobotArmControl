@@ -133,6 +133,16 @@ export class WebsocketService {
 }
 
 export function buildWsUrl(pathname = "/ws/robot-control") {
+  const explicitUrl = import.meta.env.VITE_WS_URL;
+  if (explicitUrl) return String(explicitUrl);
+
+  const base = import.meta.env.VITE_WS_BASE_URL;
+  if (base) {
+    const baseStr = String(base).replace(/\/$/, "");
+    const pathStr = String(pathname).startsWith("/") ? String(pathname) : `/${pathname}`;
+    return `${baseStr}${pathStr}`;
+  }
+
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   return `${proto}://${window.location.host}${pathname}`;
 }
