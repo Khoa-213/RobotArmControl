@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_navigation.dart';
 import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
+import 'admin_main_screen.dart';
 import 'main_screen.dart';
 
 class ApiLoginScreen extends StatefulWidget {
@@ -27,14 +28,53 @@ class _ApiLoginScreenState extends State<ApiLoginScreen> {
     super.dispose();
   }
 
+  void _showTopMessage(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    final topInset = mediaQuery.padding.top;
+    final screenHeight = mediaQuery.size.height;
+    final bottomMargin = (screenHeight - topInset - 120).clamp(
+      0.0,
+      screenHeight,
+    );
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            topInset + AppSpacing.md,
+            AppSpacing.lg,
+            bottomMargin,
+          ),
+          content: Text(message),
+        ),
+      );
+  }
+
+  String _mapErrorMessage(Object error) {
+    final message = error.toString();
+    final normalized = message.toLowerCase();
+
+    if (normalized.contains('timed out') ||
+        normalized.contains('unable to connect to backend') ||
+        normalized.contains('socketexception') ||
+        normalized.contains('failed host lookup') ||
+        normalized.contains('connection refused')) {
+      return 'Server có lỗi. Vui lòng thử lại sau.';
+    }
+
+    return message;
+  }
+
   Future<void> _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter username and password.')),
-      );
+      _showTopMessage('Please enter username and password.');
       return;
     }
 
@@ -43,33 +83,34 @@ class _ApiLoginScreenState extends State<ApiLoginScreen> {
     });
 
     try {
-      await _apiService.login(username: username, password: password);
+      final user = await _apiService.login(
+        username: username,
+        password: password,
+      );
       if (!mounted) {
         return;
       }
 
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context, true);
-      } else {
-        Navigator.pushReplacement(
-          context,
-          appRoute(const MainScreen()),
+      if (user.isAdmin) {
+        Navigator.of(context).pushAndRemoveUntil(
+          appRoute(const AdminMainScreen()),
+          (route) => false,
         );
+      } else {
+        Navigator.of(
+          context,
+        ).pushAndRemoveUntil(appRoute(const MainScreen()), (route) => false);
       }
     } on ApiAuthException catch (e) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      _showTopMessage(_mapErrorMessage(e));
     } catch (e) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to sign in: $e')));
+      _showTopMessage(_mapErrorMessage(e));
     } finally {
       if (mounted) {
         setState(() {
@@ -113,7 +154,7 @@ class _ApiLoginScreenState extends State<ApiLoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFFFFFF), Color(0xFFF2F2F2)],
+            colors: [Color(0xFF101010), Color(0xFF1B1B1B)],
           ),
         ),
         child: SafeArea(
@@ -130,7 +171,10 @@ class _ApiLoginScreenState extends State<ApiLoginScreen> {
                       children: [
                         const Text(
                           'Robot Control',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
@@ -164,7 +208,9 @@ class _ApiLoginScreenState extends State<ApiLoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: _isSubmitting ? null : _handleForgotPassword,
+                            onPressed: _isSubmitting
+                                ? null
+                                : _handleForgotPassword,
                             child: const Text('Forgot password?'),
                           ),
                         ),

@@ -25,16 +25,16 @@ class AppStatusChip extends StatelessWidget {
 
     if (_isActive) {
       fg = AppColors.success;
-      bg = const Color(0xFFEFFAF4);
-      bd = const Color(0xFFCFEFDA);
+      bg = const Color(0xFF143126);
+      bd = const Color(0xFF2C5A45);
     } else if (_isInactive) {
       fg = AppColors.slate;
-      bg = const Color(0xFFF4F4F4);
-      bd = const Color(0xFFE3E3E3);
+      bg = const Color(0xFF212121);
+      bd = const Color(0xFF343434);
     } else {
       fg = AppColors.warning;
-      bg = const Color(0xFFFEF8EA);
-      bd = const Color(0xFFF1DEC0);
+      bg = const Color(0xFF382A16);
+      bd = const Color(0xFF5C4626);
     }
 
     return Container(

@@ -11,6 +11,7 @@ class ControlScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Remote Control',
+      currentTabIndex: 2,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -26,11 +27,14 @@ class ControlScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _btn(Icons.keyboard_arrow_up, 'FORWARD (W)'),
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    _btn(Icons.keyboard_arrow_left, 'LEFT (A)'),
-                    const SizedBox(width: AppSpacing.xl),
-                    _btn(Icons.keyboard_arrow_right, 'RIGHT (D)'),
-                  ]),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _btn(Icons.keyboard_arrow_left, 'LEFT (A)'),
+                      const SizedBox(width: AppSpacing.xl),
+                      _btn(Icons.keyboard_arrow_right, 'RIGHT (D)'),
+                    ],
+                  ),
                   _btn(Icons.keyboard_arrow_down, 'BACK (S)'),
                   const SizedBox(height: AppSpacing.lg),
                   ElevatedButton.icon(

@@ -51,6 +51,7 @@ class _AreaListScreenState extends State<AreaListScreen> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Areas • ${widget.factory.name}',
+      currentTabIndex: 1,
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -71,9 +72,7 @@ class _AreaListScreenState extends State<AreaListScreen> {
               title: 'Unable to load areas',
               message: '${snapshot.error}',
               actionLabel: isAuthError ? 'Sign in' : 'Retry',
-              onAction: isAuthError
-                  ? _openLoginScreenAndReload
-                  : _reloadAreas,
+              onAction: isAuthError ? _openLoginScreenAndReload : _reloadAreas,
             );
           }
 
@@ -103,7 +102,10 @@ class _AreaListScreenState extends State<AreaListScreen> {
                   onTap: () => Navigator.push(
                     context,
                     appRoute(
-                      HubListScreen(factoryName: widget.factory.name, area: area),
+                      HubListScreen(
+                        factoryName: widget.factory.name,
+                        area: area,
+                      ),
                     ),
                   ),
                 );

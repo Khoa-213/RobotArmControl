@@ -4,6 +4,7 @@ import '../constants/app_navigation.dart';
 import '../constants/app_spacing.dart';
 import '../models/factory.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import '../widgets/app_entity_tile.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_states.dart';
@@ -21,15 +22,29 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
   final ApiService _apiService = ApiService();
   late Future<List<Factory>> _factoriesFuture;
 
+  Future<List<Factory>> _loadAssignedFactoryOnly() async {
+    final identity = await SessionService.getSessionIdentity();
+    final allFactories = await _apiService.fetchFactories();
+
+    final assignedFactoryId = identity?.user.factoryId;
+    if (assignedFactoryId == null) {
+      return const [];
+    }
+
+    return allFactories
+        .where((factory) => factory.id == assignedFactoryId.toString())
+        .toList();
+  }
+
   @override
   void initState() {
     super.initState();
-    _factoriesFuture = _apiService.fetchFactories();
+    _factoriesFuture = _loadAssignedFactoryOnly();
   }
 
   void _reloadFactories() {
     setState(() {
-      _factoriesFuture = _apiService.fetchFactories();
+      _factoriesFuture = _loadAssignedFactoryOnly();
     });
   }
 
@@ -48,6 +63,7 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Select Factory',
+      currentTabIndex: 1,
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -76,7 +92,9 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
 
           final factories = snapshot.data ?? [];
           if (factories.isEmpty) {
-            return const AppEmptyState(message: 'No factories available.');
+            return const AppEmptyState(
+              message: 'No assigned factory found for this user.',
+            );
           }
 
           return RefreshIndicator(
