@@ -13,7 +13,9 @@ function StatusPill({ active }) {
   );
 }
 
-export default function AreaTable({ areas, loading, onEdit, onDelete }) {
+export default function AreaTable({ areas, loading, onEdit, onDelete, onRowClick }) {
+  const showActions = typeof onEdit === "function" || typeof onDelete === "function";
+
   if (loading) {
     return <div className="px-5 py-10 text-center text-white/50 text-sm">Loading areas...</div>;
   }
@@ -31,14 +33,19 @@ export default function AreaTable({ areas, loading, onEdit, onDelete }) {
             <th className="text-left font-medium px-5 py-3">Description</th>
             <th className="text-left font-medium px-5 py-3">Factory</th>
             <th className="text-left font-medium px-5 py-3">Status</th>
-            <th className="text-left font-medium px-5 py-3">Actions</th>
+            {showActions && <th className="text-left font-medium px-5 py-3">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
           {areas.map((a) => {
             const active = String(a.areaStatus).toLowerCase() === "active";
+            const clickable = typeof onRowClick === "function";
             return (
-              <tr key={a.areaId} className="hover:bg-white/5 transition">
+              <tr
+                key={a.areaId}
+                className={["hover:bg-white/5 transition", clickable ? "cursor-pointer" : ""].join(" ")}
+                onClick={clickable ? () => onRowClick(a) : undefined}
+              >
                 <td className="px-5 py-4 text-left align-top">
                   <div className="text-white font-medium">{a.areaName}</div>
                   <div className="text-xs text-white/50">ID: {a.areaId}</div>
@@ -46,12 +53,18 @@ export default function AreaTable({ areas, loading, onEdit, onDelete }) {
                 <td className="px-5 py-4 text-white/70 text-left align-top">{a.areaDescription || "—"}</td>
                 <td className="px-5 py-4 text-white/70 text-left align-top">{a.factoryName || `Factory #${a.factoryId}`}</td>
                 <td className="px-5 py-4 text-left align-top"><StatusPill active={active} /></td>
-                <td className="px-5 py-4 text-left align-top">
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => onEdit(a)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
-                    <button type="button" onClick={() => onDelete(a)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
-                  </div>
-                </td>
+                {showActions && (
+                  <td className="px-5 py-4 text-left align-top">
+                    <div className="flex items-center gap-2">
+                      {typeof onEdit === "function" && (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(a); }} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
+                      )}
+                      {typeof onDelete === "function" && (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(a); }} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

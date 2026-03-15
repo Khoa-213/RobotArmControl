@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import HubTable from "../../../components/hubs/HubTable";
 import DeviceTable from "../../../components/devices/DeviceTable";
 import CreateDeviceModal from "../../../components/devices/CreateDeviceModal";
 import EditDeviceModal from "../../../components/devices/EditDeviceModal";
@@ -6,8 +8,15 @@ import { getDevicesByHub, createDevice, updateDevice, deleteDevice } from "../..
 import { getHubsByArea } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function DevicesPage() {
+  const canManage = isAdminRole(getRole());
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedHubIdRaw = searchParams.get("hubId");
+  const selectedHubId = selectedHubIdRaw ? Number(selectedHubIdRaw) : null;
+
   const [devices, setDevices] = useState([]);
   const [hubs, setHubs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,7 +26,7 @@ export default function DevicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  async function loadData() {
+  async function loadHubs() {
     try {
       setLoading(true);
       setError("");
@@ -29,40 +38,78 @@ export default function DevicesPage() {
       for (const f of factoryList) {
         try {
           const areasData = await getAreasByFactory(f.factoryId);
-          if (Array.isArray(areasData)) allAreas.push(...areasData);
-        } catch { /* skip */ }
+          if (Array.isArray(areasData)) {
+            areasData.forEach((a) => {
+              a.factoryName = f.factoryName;
+            });
+            allAreas.push(...areasData);
+          }
+        } catch {
+          /* skip */
+        }
       }
 
       const allHubs = [];
       for (const a of allAreas) {
         try {
           const hubsData = await getHubsByArea(a.areaId);
-          if (Array.isArray(hubsData)) allHubs.push(...hubsData);
-        } catch { /* skip */ }
-      }
-      setHubs(allHubs);
-
-      const allDevices = [];
-      for (const h of allHubs) {
-        try {
-          const devicesData = await getDevicesByHub(h.hubId);
-          if (Array.isArray(devicesData)) {
-            devicesData.forEach((d) => { d.hubName = h.hubName; });
-            allDevices.push(...devicesData);
+          if (Array.isArray(hubsData)) {
+            hubsData.forEach((h) => {
+              h.areaName = a.areaName;
+            });
+            allHubs.push(...hubsData);
           }
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
-      setDevices(allDevices);
+
+      setHubs(allHubs);
     } catch (e) {
-      setError(e?.message || "Failed to load data");
+      setError(e?.message || "Failed to load hubs");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  async function loadDevicesForHub(hubId) {
+    if (!hubId) {
+      setDevices([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const selectedHub = hubs.find((h) => h.hubId === hubId);
+      const devicesData = await getDevicesByHub(hubId);
+      const list = Array.isArray(devicesData) ? devicesData : [];
+      list.forEach((d) => {
+        d.hubName = selectedHub?.hubName || `Hub #${hubId}`;
+      });
+      setDevices(list);
+    } catch (e) {
+      setError(e?.message || "Failed to load devices");
+      setDevices([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const canCreate = hubs.length > 0;
+  useEffect(() => { loadHubs(); }, []);
+
+  useEffect(() => {
+    if (!hubs || hubs.length === 0) {
+      setDevices([]);
+      return;
+    }
+    if (selectedHubId) {
+      loadDevicesForHub(selectedHubId);
+    } else {
+      setDevices([]);
+    }
+  }, [selectedHubId, hubs]);
+
+  const canCreate = canManage && !!selectedHubId;
 
   async function handleCreate(formData) {
     try {
@@ -72,7 +119,7 @@ export default function DevicesPage() {
       const hub = hubs.find((h) => h.hubId === hubId);
       const created = await createDevice(hubId, rest);
       created.hubName = hub?.hubName || `Hub #${hubId}`;
-      setDevices((prev) => [created, ...prev]);
+      setDevices((prev) => (hubId === selectedHubId ? [created, ...prev] : prev));
       setCreateOpen(false);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || "Failed to create device");
@@ -109,6 +156,8 @@ export default function DevicesPage() {
     }
   }
 
+  const selectedHub = selectedHubId ? hubs.find((h) => h.hubId === selectedHubId) : null;
+
   return (
     <div className="w-full">
       <div className="flex items-start justify-between gap-4">
@@ -122,22 +171,52 @@ export default function DevicesPage() {
           <button type="button" onClick={() => setCreateOpen(true)} className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60" disabled={loading}>
             + Create Device
           </button>
-        ) : (
+        ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
-            You must create a hub before creating devices.
+            Select a hub before creating devices.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <CreateDeviceModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={saving} hubs={hubs} />
-      <EditDeviceModal open={!!editTarget} device={editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} loading={saving} />
+      {canManage && (
+        <>
+          <CreateDeviceModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={saving} hubs={hubs} initialHubId={selectedHubId} />
+          <EditDeviceModal open={!!editTarget} device={editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} loading={saving} />
+        </>
+      )}
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <div className="text-xs uppercase tracking-wider text-white/50">Devices List ({devices.length})</div>
+      {!selectedHubId ? (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10">
+            <div className="text-xs uppercase tracking-wider text-white/50">Select Hub ({hubs.length})</div>
+          </div>
+          <HubTable
+            hubs={hubs}
+            loading={loading}
+            onRowClick={(h) => setSearchParams({ hubId: String(h.hubId) })}
+          />
         </div>
-        <DeviceTable devices={devices} loading={loading} onEdit={(d) => setEditTarget(d)} onDelete={handleDelete} />
-      </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="text-xs uppercase tracking-wider text-white/50">Devices for {selectedHub?.hubName || `Hub #${selectedHubId}`} ({devices.length})</div>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
+              onClick={() => setSearchParams({})}
+              disabled={loading}
+            >
+              Change Hub
+            </button>
+          </div>
+          <DeviceTable
+            devices={devices}
+            loading={loading}
+            onEdit={canManage ? (d) => setEditTarget(d) : undefined}
+            onDelete={canManage ? handleDelete : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

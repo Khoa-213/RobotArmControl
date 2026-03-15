@@ -1,6 +1,8 @@
 package com.example.robotcontrolsystembackend.config.websocket;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.*;
 
@@ -16,6 +18,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(robotControlHandler, "/ws/robot-control")
                 .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOrigins("*");
+                .setAllowedOriginPatterns("*");
+    }
+    @Bean
+    public RobotSessionSender robotSessionSender() {
+        return new RobotSessionSenderImpl();
     }
 }

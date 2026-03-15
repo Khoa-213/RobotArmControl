@@ -8,8 +8,11 @@ import {
   updateFactory,
   deleteFactory,
 } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function FactoriesPage() {
+  const canManage = isAdminRole(getRole());
+
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,31 +84,37 @@ export default function FactoriesPage() {
           {error && <div className="mt-2 text-sm text-red-300">{error}</div>}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60"
-          disabled={loading}
-        >
-          + Create Factory
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60"
+            disabled={loading}
+          >
+            + Create Factory
+          </button>
+        )}
       </div>
 
-      <CreateFactoryModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={saving}
-      />
+      {canManage && (
+        <>
+          <CreateFactoryModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleCreate}
+            loading={saving}
+          />
 
-      <EditFactoryModal
-        key={editTarget?.factoryId ?? "edit-factory"}
-        open={!!editTarget}
-        factory={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        loading={saving}
-      />
+          <EditFactoryModal
+            key={editTarget?.factoryId ?? "edit-factory"}
+            open={!!editTarget}
+            factory={editTarget}
+            onClose={() => setEditTarget(null)}
+            onSubmit={handleEdit}
+            loading={saving}
+          />
+        </>
+      )}
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
@@ -116,8 +125,8 @@ export default function FactoriesPage() {
         <FactoryTable
           factories={factories}
           loading={loading}
-          onEdit={(f) => setEditTarget(f)}
-          onDelete={handleDelete}
+          onEdit={canManage ? (f) => setEditTarget(f) : undefined}
+          onDelete={canManage ? handleDelete : undefined}
         />
       </div>
     </div>

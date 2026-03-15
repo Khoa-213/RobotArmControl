@@ -94,6 +94,7 @@ export function useAiCamera() {
 
   const [wsConnected, setWsConnected] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
+  const [sessionDeviceId, setSessionDeviceId] = useState(null);
   const [isCameraRunning, setIsCameraRunning] = useState(false);
   const [isSendingAngles, setIsSendingAngles] = useState(false);
   const [angles, setAngles] = useState(() => [0, 0, 0, 0, 0, 0]);
@@ -106,6 +107,7 @@ export function useAiCamera() {
 
   const wsConnectedRef = useRef(false);
   const sessionActiveRef = useRef(false);
+  const sessionDeviceIdRef = useRef(null);
   const runningRef = useRef(false);
   const isSendingAnglesRef = useRef(false);
 
@@ -119,6 +121,7 @@ export function useAiCamera() {
   const anglesRef = useRef([0, 0, 0, 0, 0, 0]);
   const lastTickRef = useRef(0);
   const lastSendRef = useRef(0);
+  const lastRestSendRef = useRef(0);
   const palmXFilteredRef = useRef(null);
 
   const selectedJointRef = useRef(0);
@@ -134,7 +137,11 @@ export function useAiCamera() {
   const consecutiveSendErrorsRef = useRef(0);
   const sendErrorShownRef = useRef(false);
 
+  const consecutiveWsSendErrorsRef = useRef(0);
+
   const wsServiceRef = useRef(null);
+
+  const lastAiAnglesConsoleLogRef = useRef(0);
 
   function stopLocal() {
     runningRef.current = false;
@@ -180,6 +187,7 @@ export function useAiCamera() {
     if (wsServiceRef.current) return wsServiceRef.current;
 
     const wsUrl = buildWsUrl("/ws/robot-control");
+    console.info("[AI Camera] WS URL:", wsUrl);
     const svc = new WebsocketService(wsUrl, {
       reconnect: { enabled: true },
     });
@@ -188,9 +196,11 @@ export function useAiCamera() {
       onStatus: (connected) => {
         wsConnectedRef.current = connected;
         setWsConnected(connected);
+        console.info("[AI Camera] WS status:", connected ? "connected" : "disconnected");
       },
-      onError: () => {
+      onError: (err) => {
         // keep UI minimal; status indicator is enough
+        console.warn("[AI Camera] WS error:", err);
       },
       onMessage: (msg) => {
         if (msg && typeof msg === "object") {
@@ -208,12 +218,32 @@ export function useAiCamera() {
     return svc;
   }
 
+  function getPreferredDeviceId() {
+    // Minimal mechanism (no new UI): allow selecting deviceId via URL (?deviceId=)
+    // or existing localStorage keys if the app already stores it.
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const fromQs = qs.get("deviceId");
+      if (fromQs != null && String(fromQs).trim() !== "") return Number(fromQs);
+    } catch {
+      // ignore
+    }
+
+    const fromStorage = localStorage.getItem("deviceId") || localStorage.getItem("selectedDeviceId");
+    if (fromStorage != null && String(fromStorage).trim() !== "") return Number(fromStorage);
+    return null;
+  }
+
   async function refreshStatus() {
     try {
       const status = await cameraService.status();
       const active = !!status?.sessionActive;
       sessionActiveRef.current = active;
       setSessionActive(active);
+
+      const dev = status?.deviceId ?? null;
+      sessionDeviceIdRef.current = dev;
+      setSessionDeviceId(dev);
     } catch (e) {
       setError(e?.message || "Failed to fetch camera status");
     }
@@ -314,14 +344,42 @@ export function useAiCamera() {
 
       // send at ~20 msg/s
       const sendIntervalMs = 50;
-      if (isSendingAnglesRef.current && wsConnectedRef.current) {
-        if (now - lastSendRef.current >= sendIntervalMs) {
-          lastSendRef.current = now;
-          const svc = wsServiceRef.current;
-          svc?.sendJson({ type: "ai_angles", angles: next.map((n) => Number(n)) });
-          setAngles(next);
+      if (!isSendingAnglesRef.current) return;
+      if (now - lastSendRef.current < sendIntervalMs) return;
+      lastSendRef.current = now;
+
+      const deviceId = sessionDeviceIdRef.current;
+      const payloadAngles = next.map((n) => Number(n));
+      const payload = { type: "ai_angles", deviceId, angles: payloadAngles };
+
+      // Preferred path: REST -> BE will forward/broadcast over WS to Unity.
+      // Keep it slower to reduce backend load.
+      const restMinIntervalMs = 100;
+      if (now - lastRestSendRef.current >= restMinIntervalMs) {
+        lastRestSendRef.current = now;
+        cameraService.sendAngles(payloadAngles, deviceId).catch(() => {
+          // keep UI minimal; status pills indicate connectivity
+        });
+      }
+
+      // Optional: WS direct (useful for debugging), but do not depend on it.
+      if (wsConnectedRef.current) {
+        const svc = wsServiceRef.current;
+        const ok = svc?.sendJson(payload);
+        if (!ok) {
+          consecutiveWsSendErrorsRef.current += 1;
+        } else {
+          consecutiveWsSendErrorsRef.current = 0;
         }
       }
+
+      // Throttled diagnostics (once/sec)
+      if (now - lastAiAnglesConsoleLogRef.current >= 1000) {
+        lastAiAnglesConsoleLogRef.current = now;
+        console.debug("[AI Camera] send ai_angles:", payload);
+      }
+
+      setAngles(next);
     });
 
     handsRef.current = hands;
@@ -360,9 +418,13 @@ export function useAiCamera() {
     setError("");
 
     try {
-      await cameraService.start();
+      const started = await cameraService.start(getPreferredDeviceId());
       sessionActiveRef.current = true;
       setSessionActive(true);
+
+      const dev = started?.deviceId ?? null;
+      sessionDeviceIdRef.current = dev;
+      setSessionDeviceId(dev);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || "Failed to start camera session");
       return;
@@ -389,10 +451,13 @@ export function useAiCamera() {
     setFingersCount(0);
     lastTickRef.current = performance.now();
     lastSendRef.current = 0;
+    lastRestSendRef.current = 0;
     palmXFilteredRef.current = null;
 
     consecutiveSendErrorsRef.current = 0;
     sendErrorShownRef.current = false;
+
+    consecutiveWsSendErrorsRef.current = 0;
 
     runningRef.current = true;
     isSendingAnglesRef.current = true;
@@ -416,6 +481,8 @@ export function useAiCamera() {
       setError(e?.response?.data?.message || e?.message || "Failed to stop camera session");
     } finally {
       stopLocal();
+      sessionDeviceIdRef.current = null;
+      setSessionDeviceId(null);
     }
   }
 
@@ -441,6 +508,7 @@ export function useAiCamera() {
     isViewer,
     wsConnected,
     sessionActive,
+    sessionDeviceId,
     isCameraRunning,
     isSendingAngles,
     angles,

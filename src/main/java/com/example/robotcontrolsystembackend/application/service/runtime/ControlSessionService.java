@@ -2,7 +2,9 @@ package com.example.robotcontrolsystembackend.application.service.runtime;
 
 import com.example.robotcontrolsystembackend.application.dto.request.runtime.StartSessionRequest;
 import com.example.robotcontrolsystembackend.application.dto.response.runtime.SessionStatusResponse;
+import com.example.robotcontrolsystembackend.common.response.PageResponse;
 import com.example.robotcontrolsystembackend.domain.enumtype.ControlMode;
+import com.example.robotcontrolsystembackend.domain.enumtype.SessionStatus;
 
 public interface ControlSessionService {
     
@@ -24,6 +26,16 @@ public interface ControlSessionService {
      * @return session status response
      */
     SessionStatusResponse getSessionStatus();
+
+    /**
+     * List control sessions from PostgreSQL
+     */
+    PageResponse<SessionStatusResponse> getSessions(SessionStatus status, int page, int size);
+
+    /**
+     * Get one session by id from PostgreSQL
+     */
+    SessionStatusResponse getSessionById(Long sessionId);
     
     /**
      * Check if a session is currently active

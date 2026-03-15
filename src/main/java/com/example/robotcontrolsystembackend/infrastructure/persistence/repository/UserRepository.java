@@ -21,8 +21,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByEmail(String email);
     
     @Query("SELECT u FROM User u WHERE " +
-           "(:role IS NULL OR u.role = :role) AND " +
-           "(:status IS NULL OR u.userStatus = :status) AND " +
+           "(u.role = COALESCE(:role, u.role)) AND " +
+           "(u.userStatus = COALESCE(:status, u.userStatus)) AND " +
            "(COALESCE(:search, '') = '' OR " +
            "LOWER(u.username) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))")
@@ -34,18 +34,20 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     @Query(
            value = "SELECT u.* FROM \"user\" u WHERE " +
-                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
-                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
-                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
-                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
-                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%')) " +
+                  "(:role IS NULL OR u.role::text = :role) AND " +
+                  "(:status IS NULL OR u.user_status::text = :status) AND " +
+                  "(CASE WHEN COALESCE(:search, '') = '' THEN TRUE ELSE (" +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', :search, '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', :search, '%')" +
+                  ") END) " +
                   "ORDER BY u.user_id",
            countQuery = "SELECT COUNT(*) FROM \"user\" u WHERE " +
-                  "(CAST(:role AS varchar) IS NULL OR u.role = CAST(:role AS varchar)) AND " +
-                  "(CAST(:status AS user_status_enum) IS NULL OR u.user_status = CAST(:status AS user_status_enum)) AND " +
-                  "(COALESCE(CAST(:search AS varchar), '') = '' OR " +
-                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%') OR " +
-                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', COALESCE(CAST(:search AS varchar), ''), '%'))",
+                  "(:role IS NULL OR u.role::text = :role) AND " +
+                  "(:status IS NULL OR u.user_status::text = :status) AND " +
+                  "(CASE WHEN COALESCE(:search, '') = '' THEN TRUE ELSE (" +
+                  "convert_from(u.user_name::bytea, 'UTF8') ILIKE CONCAT('%', :search, '%') OR " +
+                  "convert_from(u.email::bytea, 'UTF8') ILIKE CONCAT('%', :search, '%')" +
+                  ") END)",
            nativeQuery = true
     )
     Page<User> findAllWithFiltersBytea(

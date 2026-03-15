@@ -4,18 +4,27 @@ import websocket
 import json
 import math
 import urllib.request
+import urllib.error
 import os
 import time
 import threading
 import numpy as np
 
 # ============ CONFIGURATION ============
-API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "https://robot-control-system-rmbw.onrender.com")
-WS_URL = os.getenv("ROBOT_WS_URL", "wss://robot-control-system-rmbw.onrender.com/ws/robot-control")
+# API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "https://robot-control-system-rmbw.onrender.com")
+# WS_URL = os.getenv("ROBOT_WS_URL", "wss://robot-control-system-rmbw.onrender.com/ws/robot-control")
+API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "http://localhost:8080")
+WS_URL = os.getenv("ROBOT_WS_URL", "ws://localhost:8080/ws/robot-control")
+SESSION_API_PATH = os.getenv("SESSION_API_PATH", f"{API_BASE_URL}/api/control-sessions/current")
+API_BEARER_TOKEN = os.getenv("ROBOT_API_TOKEN", "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0IiwidXNlcklkIjozLCJyb2xlIjoiQURNSU4iLCJlbWFpbCI6InN0cmluZ0BnbWFpbC5jb20iLCJpYXQiOjE3NzM1NTgxNDQsImV4cCI6MTc3MzY0NDU0NH0._fFa8ms5ZB4-65PJ4JukobB91-24EfSdan_o-bd-br3XFjfxzYx7gf90ZgMcZd8H")
+
+# DEVICE_ID will be fetched from API at startup if available; fallback from env
+DEVICE_ID = os.getenv("DEVICE_ID", None)
 
 # Camera control state
 camera_active = False
 camera_lock = threading.Lock()
+device_lock = threading.Lock()
 stop_event = threading.Event()
 
 # ============ SETUP MEDIAPIPE ============
@@ -32,6 +41,7 @@ if not os.path.exists(MODEL_PATH):
 
 latest_landmarks = None
 latest_handedness = None
+last_timestamp_ms = 0  # monotonic timestamp for MediaPipe
 
 def result_callback(result, output_image, timestamp_ms):
     global latest_landmarks, latest_handedness
@@ -75,12 +85,12 @@ class RobotHandController:
     def __init__(self):
         self.angles = [0.0] * 6
         self.joint_limits = [
-            (-90, 90),  # J0 shoulder_link
-            (-45, 45),  # J1 arm_link
-            (-60, 60),  # J2 elbow_link
-            (-90, 90),  # J3 forearm_link
-            (-90, 90),  # J4 wrist_link
-            (0, 45)   # J5 hand_link
+            (-90, 90),
+            (-45, 45),
+            (-60, 60),
+            (-90, 90),
+            (-90, 90),
+            (0, 45)
         ]
         self.joint_names = [
             "J0 shoulder_link",
@@ -110,9 +120,6 @@ class RobotHandController:
         if lm[16].y < lm[14].y: fingers += 1
         if lm[20].y < lm[18].y: fingers += 1
         thumb_dx = lm[4].x - lm[2].x
-        # Thumb detection tends to be noisy when the frame is mirrored (we flip with cv2.flip)
-        # and handedness can occasionally jitter. Use handedness when available, but also
-        # include an absolute fallback so "5 fingers" is reachable reliably.
         if handedness == "Right":
             thumb_open = thumb_dx > 0.03
         elif handedness == "Left":
@@ -172,25 +179,41 @@ ws_app = None
 ws_connected = False
 
 def on_message(ws, message):
-    global camera_active
+    global camera_active, DEVICE_ID
     try:
         data = json.loads(message)
         msg_type = data.get("type", "")
+        if msg_type == "session_start":
+            control_mode = data.get("controlMode", "CAMERA").upper()
+            device = data.get("deviceId")
+            if device:
+                with device_lock:
+                    DEVICE_ID = str(device)
+                print(f"[WS] session_start received -> deviceId set: {DEVICE_ID}")
+            with camera_lock:
+                camera_active = (control_mode == "CAMERA")
+            print(f"[WS] session_start received (controlMode={control_mode}) -> camera_active={camera_active}")
+            return
+
+        if msg_type == "session_end":
+            with camera_lock:
+                camera_active = False
+            with device_lock:
+                DEVICE_ID = None
+            print("[WS] session_end received -> camera_active=False, deviceId cleared")
+            return
+
         if msg_type == "camera_control":
             command = data.get("command", "")
             with camera_lock:
-                if command == "START":
-                    if not camera_active:
-                        camera_active = True
-                        print("\n" + "="*50)
-                        print(">>> AI CAMERA ACTIVATED - Bắt đầu điều khiển! <<<")
-                        print("="*50 + "\n")
-                elif command == "STOP":
-                    if camera_active:
-                        camera_active = False
-                        print("\n" + "="*50)
-                        print(">>> AI CAMERA DEACTIVATED - Kết thúc điều khiển <<<")
-                        print("="*50 + "\n")
+                if command == "START" and not camera_active:
+                    camera_active = True
+                    print(">>> AI CAMERA ACTIVATED - Bắt đầu điều khiển!")
+                elif command == "STOP" and camera_active:
+                    camera_active = False
+                    print(">>> AI CAMERA DEACTIVATED - Kết thúc điều khiển")
+            return
+
     except json.JSONDecodeError:
         pass
     except Exception as e:
@@ -207,7 +230,9 @@ def on_close(ws, close_status_code, close_msg):
 def on_open(ws):
     global ws_connected
     ws_connected = True
-    print("✓ WebSocket kết nối thành công! Đang chờ lệnh START từ server...")
+    with device_lock:
+        dev = DEVICE_ID
+    print(f"✓ WebSocket connected. DEVICE_ID (for sends): {dev}")
 
 def connect_websocket():
     global ws_app
@@ -231,8 +256,11 @@ def send_angles(angles):
     global ws_app
     if ws_app is None or not ws_connected:
         return
+    with device_lock:
+        dev = DEVICE_ID
     payload = {
         "type": "ai_angles",
+        "deviceId": dev,
         "angles": [round(a, 2) for a in angles]
     }
     try:
@@ -240,7 +268,70 @@ def send_angles(angles):
     except Exception as e:
         print(f"! Error sending angles: {e}")
 
-# ============ DRAW ============
+# ============ HELPER: fetch session from API ============
+def fetch_session_from_api(timeout=5, retries=3, backoff=1.0):
+    """Call SESSION_API_PATH to get session info (expects ApiResponse with 'data' containing deviceId and controlMode)."""
+    global DEVICE_ID
+    if API_BEARER_TOKEN:
+        print(f"[API] Using bearer token (length={len(API_BEARER_TOKEN)}). URL={SESSION_API_PATH}")
+    else:
+        print(f"[API] No bearer token set. URL={SESSION_API_PATH}")
+
+    attempt = 0
+    while attempt < retries:
+        attempt += 1
+        try:
+            req = urllib.request.Request(SESSION_API_PATH, method="GET")
+            if API_BEARER_TOKEN:
+                req.add_header("Authorization", f"Bearer {API_BEARER_TOKEN}")
+            req.add_header("Accept", "application/json")
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read().decode("utf-8")
+                status = getattr(resp, "status", None)
+                print(f"[API] HTTP {status} received on attempt {attempt}")
+                try:
+                    wrapper = json.loads(body)
+                except Exception:
+                    print(f"[API] Failed to parse JSON body: {body}")
+                    wrapper = None
+
+                # try to extract payload from ApiResponse wrapper
+                payload = None
+                if isinstance(wrapper, dict) and "data" in wrapper:
+                    payload = wrapper.get("data")
+                elif isinstance(wrapper, dict):
+                    payload = wrapper
+                else:
+                    payload = wrapper
+
+                print(f"[API] response wrapper: {wrapper}")
+                if not payload:
+                    print(f"[API] no payload/data found in response")
+                    return None
+
+                device = payload.get("deviceId")
+                control_mode = payload.get("controlMode")
+                if device is not None:
+                    with device_lock:
+                        DEVICE_ID = str(device)
+                    print(f"[API] fetched deviceId from session API: {DEVICE_ID}")
+                else:
+                    print(f"[API] payload has no deviceId: {payload}")
+
+                return {"deviceId": device, "controlMode": control_mode}
+        except urllib.error.HTTPError as he:
+            body = he.read().decode("utf-8") if hasattr(he, "read") else ""
+            print(f"[API] HTTPError {he.code}: {he.reason}. Body: {body}")
+            if he.code in (401, 403):
+                print("[API] Authorization failed (401/403) - check ROBOT_API_TOKEN and user roles.")
+                return None
+        except Exception as e:
+            print(f"[API] fetch attempt {attempt} error: {e}")
+        time.sleep(backoff * attempt)
+    print("[API] fetch_session_from_api exhausted retries")
+    return None
+
+# ============ DRAW & MAIN ============
 def draw_hand(image, landmarks):
     if not landmarks:
         return image
@@ -303,36 +394,34 @@ def draw_ui(frame, controller, fingers_count, handedness, palm_x, control):
         cv2.putText(frame, text, (10, y0 + i * 22),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1)
 
-# ============ MAIN ============
 def main():
-    global camera_active
+    global camera_active, last_timestamp_ms, DEVICE_ID
     print("=" * 72)
-    print(" AI Camera - 6 DOF Robot Arm Control (No Auth Mode)")
+    print(" AI Camera - 6 DOF Robot Arm Control")
     print("=" * 72)
     print(f"Server: {API_BASE_URL}")
     print("=" * 72)
-    # Kết nối WebSocket
+
+    # Try to fetch session/device assignment from API (optional)
+    session_info = fetch_session_from_api()
+    if session_info:
+        if session_info.get("deviceId"):
+            with device_lock:
+                DEVICE_ID = str(session_info.get("deviceId"))
+            print(f"[API] Received deviceId: {DEVICE_ID}")
+        else:
+            print("[API] No deviceId in session_info")
+        cm = (session_info.get("controlMode") or "").upper() if session_info.get("controlMode") else ""
+        if cm == "CAMERA":
+            with camera_lock:
+                camera_active = True
+            print(f"[API] controlMode={cm} -> camera_active=True")
+
     if not connect_websocket():
-        print("\n✗ Không thể kết nối. Thoát chương trình.")
+        print("\n✗ Cannot connect to WebSocket. Exiting.")
         return
-    print()
-    print("AI Camera đang chờ lệnh START từ Frontend...")
-    print("(Camera sẽ tự động bật khi bạn nhấn 'Bắt đầu điều khiển' trên web)")
-    print()
-    print("="*50)
-    print("Hướng dẫn sử dụng khi camera hoạt động:")
-    print("0 ngón -> J0 shoulder_link")
-    print("1 ngón -> J1 arm_link")
-    print("2 ngón -> J2 elbow_link")
-    print("3 ngón -> J3 forearm_link")
-    print("4 ngón -> J4 wrist_link")
-    print("5 ngón -> J5 hand_link")
-    print("Di tay trái/phải để giảm/tăng góc")
-    print("R = Reset | Q = Quit")
-    print("="*50)
-    print()
+
     cap = None
-    ts = 0
     prev_time = time.time()
     try:
         while True:
@@ -348,21 +437,29 @@ def main():
                     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                     print("✓ Camera started")
-                    ts = 0
                     prev_time = time.time()
+
                 ret, frame = cap.read()
                 if not ret:
                     time.sleep(0.01)
                     continue
+
                 frame = cv2.flip(frame, 1)
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-                ts += 33
-                hand_landmarker.detect_async(mp_img, ts)
+
+                timestamp_ms = int(time.monotonic() * 1000)
+                if timestamp_ms <= last_timestamp_ms:
+                    timestamp_ms = last_timestamp_ms + 1
+                last_timestamp_ms = timestamp_ms
+
+                hand_landmarker.detect_async(mp_img, timestamp_ms)
+
                 now = time.time()
                 dt = now - prev_time
                 prev_time = now
                 dt = max(0.001, min(dt, 0.05))
+
                 if latest_landmarks:
                     frame = draw_hand(frame, latest_landmarks)
                     fingers_count, palm_x, palm_y, control = controller.update_angles(
@@ -378,6 +475,7 @@ def main():
                     for i, angle in enumerate(controller.angles):
                         cv2.putText(frame, f"{controller.joint_names[i]}: {angle:>7.1f}", (10, 70 + i * 28),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 0), 2)
+
                 cv2.putText(frame, "ACTIVE", (frame.shape[1] - 100, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                 cv2.imshow("AI Camera Robot Control", frame)
@@ -410,7 +508,10 @@ def main():
         if cap is not None:
             cap.release()
         cv2.destroyAllWindows()
-        hand_landmarker.close()
+        try:
+            hand_landmarker.close()
+        except:
+            pass
         if ws_app:
             ws_app.close()
         print("AI Camera đã dừng.")

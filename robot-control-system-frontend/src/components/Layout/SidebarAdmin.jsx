@@ -6,22 +6,45 @@ import {
   ApartmentOutlined,
   ClusterOutlined,
   RobotOutlined,
+  UserOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
+import { getRole, isAdminRole, isOperatorRole } from "../../utils/auth";
 
 function SidebarAdmin({ collapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const items = [
-    { key: "/admin/dashboard", label: "Dashboard", icon: <DashboardOutlined /> },
-    { key: "/admin/factories", label: "Factories", icon: <BankOutlined /> },
-    { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
-    { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
-    { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
-    { key: "/admin/ai-camera", label: "AI Camera Control", icon: <VideoCameraOutlined /> },
-    
-  ];
+  const role = getRole();
+  const isAdmin = isAdminRole(role);
+  const isOperator = isOperatorRole(role);
+
+  const items = isAdmin
+    ? [
+        { key: "/admin/dashboard", label: "Dashboard", icon: <DashboardOutlined /> },
+        { key: "/admin/factories", label: "Factories", icon: <BankOutlined /> },
+        { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
+        { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
+        { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
+        { key: "/admin/users", label: "Users", icon: <UserOutlined /> },
+      ]
+    : isOperator
+      ? [
+          { key: "/admin/dashboard", label: "Logs", icon: <DashboardOutlined /> },
+          { key: "/admin/ai-camera", label: "Control Robot", icon: <VideoCameraOutlined /> },
+          { key: "/admin/factories", label: "Factories", icon: <BankOutlined /> },
+          { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
+          { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
+          { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
+        ]
+      : [
+          { key: "/admin/dashboard", label: "Dashboard", icon: <DashboardOutlined /> },
+          { key: "/admin/factories", label: "Factories", icon: <BankOutlined /> },
+          { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
+          { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
+          { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
+          { key: "/admin/ai-camera", label: "AI Camera Control", icon: <VideoCameraOutlined /> },
+        ];
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");

@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
-export default function CreateDeviceModal({ open, onClose, onSubmit, loading, hubs }) {
+export default function CreateDeviceModal({ open, onClose, onSubmit, loading, hubs, initialHubId }) {
   const [form, setForm] = useState({
     deviceName: "", hubId: "", deviceType: "RobotArm", robotType: "Unity",
     model: "", serialNumber: "", connectionType: "USB",
   });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialHubId) return;
+    setForm((p) => (p.hubId ? p : { ...p, hubId: String(initialHubId) }));
+  }, [open, initialHubId]);
 
   if (!open) return null;
 

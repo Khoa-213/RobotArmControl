@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import FactoryTable from "../../../components/factories/FactoryTable";
 import AreaTable from "../../../components/areas/AreaTable";
 import CreateAreaModal from "../../../components/areas/CreateAreaModal";
 import EditAreaModal from "../../../components/areas/EditAreaModal";
 import { getAreasByFactory, createArea, updateArea, deleteArea } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function AreasPage() {
+  const canManage = isAdminRole(getRole());
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedFactoryIdRaw = searchParams.get("factoryId");
+  const selectedFactoryId = selectedFactoryIdRaw ? Number(selectedFactoryIdRaw) : null;
+
   const [areas, setAreas] = useState([]);
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -15,25 +24,13 @@ export default function AreasPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  async function loadData() {
+  async function loadFactories() {
     try {
       setLoading(true);
       setError("");
       const factoriesData = await getFactories();
       const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
       setFactories(factoryList);
-
-      const allAreas = [];
-      for (const f of factoryList) {
-        try {
-          const areasData = await getAreasByFactory(f.factoryId);
-          if (Array.isArray(areasData)) {
-            areasData.forEach((a) => { a.factoryName = f.factoryName; });
-            allAreas.push(...areasData);
-          }
-        } catch { /* factory may have no areas */ }
-      }
-      setAreas(allAreas);
     } catch (e) {
       setError(e?.message || "Failed to load data");
     } finally {
@@ -41,9 +38,44 @@ export default function AreasPage() {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  async function loadAreasForFactory(factoryId) {
+    if (!factoryId) {
+      setAreas([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const selectedFactory = factories.find((f) => f.factoryId === factoryId);
+      const areasData = await getAreasByFactory(factoryId);
+      const list = Array.isArray(areasData) ? areasData : [];
+      list.forEach((a) => {
+        a.factoryName = selectedFactory?.factoryName || `Factory #${factoryId}`;
+      });
+      setAreas(list);
+    } catch (e) {
+      setError(e?.message || "Failed to load areas");
+      setAreas([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const canCreate = factories.length > 0;
+  useEffect(() => { loadFactories(); }, []);
+
+  useEffect(() => {
+    if (!factories || factories.length === 0) {
+      setAreas([]);
+      return;
+    }
+    if (selectedFactoryId) {
+      loadAreasForFactory(selectedFactoryId);
+    } else {
+      setAreas([]);
+    }
+  }, [selectedFactoryId, factories]);
+
+  const canCreate = canManage && !!selectedFactoryId;
 
   async function handleCreate(formData) {
     try {
@@ -53,7 +85,7 @@ export default function AreasPage() {
       const created = await createArea(factoryId, { areaName, areaDescription });
       const factory = factories.find((f) => f.factoryId === factoryId);
       created.factoryName = factory?.factoryName || `Factory #${factoryId}`;
-      setAreas((prev) => [created, ...prev]);
+      setAreas((prev) => (factoryId === selectedFactoryId ? [created, ...prev] : prev));
       setCreateOpen(false);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || "Failed to create area");
@@ -92,6 +124,8 @@ export default function AreasPage() {
     }
   }
 
+  const selectedFactory = selectedFactoryId ? factories.find((f) => f.factoryId === selectedFactoryId) : null;
+
   return (
     <div className="w-full">
       <div className="flex items-start justify-between gap-4">
@@ -110,43 +144,71 @@ export default function AreasPage() {
           >
             + Create Area
           </button>
-        ) : (
+        ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
-            You must create a factory before creating areas.
+            Select a factory before creating areas.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <CreateAreaModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={saving}
-        factories={factories}
-      />
+      {canManage && (
+        <>
+          <CreateAreaModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleCreate}
+            loading={saving}
+            factories={factories}
+            initialFactoryId={selectedFactoryId}
+          />
 
-      <EditAreaModal
-        key={editTarget?.areaId ?? "edit-area"}
-        open={!!editTarget}
-        area={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        loading={saving}
-      />
+          <EditAreaModal
+            key={editTarget?.areaId ?? "edit-area"}
+            open={!!editTarget}
+            area={editTarget}
+            onClose={() => setEditTarget(null)}
+            onSubmit={handleEdit}
+            loading={saving}
+          />
+        </>
+      )}
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <div className="text-xs uppercase tracking-wider text-white/50">
-            Areas List ({areas.length})
+      {!selectedFactoryId ? (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10">
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              Select Factory ({factories.length})
+            </div>
           </div>
+          <FactoryTable
+            factories={factories}
+            loading={loading}
+            onRowClick={(f) => setSearchParams({ factoryId: String(f.factoryId) })}
+          />
         </div>
-        <AreaTable
-          areas={areas}
-          loading={loading}
-          onEdit={(a) => setEditTarget(a)}
-          onDelete={handleDelete}
-        />
-      </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              Areas for {selectedFactory?.factoryName || `Factory #${selectedFactoryId}`} ({areas.length})
+            </div>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
+              onClick={() => setSearchParams({})}
+              disabled={loading}
+            >
+              Change Factory
+            </button>
+          </div>
+          <AreaTable
+            areas={areas}
+            loading={loading}
+            onEdit={canManage ? (a) => setEditTarget(a) : undefined}
+            onDelete={canManage ? handleDelete : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }
