@@ -7,6 +7,7 @@ import com.example.robotcontrolsystembackend.application.service.auth.AuthServic
 import com.example.robotcontrolsystembackend.common.exception.AppException;
 import com.example.robotcontrolsystembackend.common.exception.ErrorCode;
 import com.example.robotcontrolsystembackend.config.security.JwtProvider;
+import com.example.robotcontrolsystembackend.domain.enumtype.UserRole;
 import com.example.robotcontrolsystembackend.domain.model.User;
 import com.example.robotcontrolsystembackend.infrastructure.persistence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Public registration: only creates VIEWER and cannot assign factory.
+        if (request.getFactoryId() != null) {
+            throw new AppException(ErrorCode.ACCESS_DENIED, "Only ADMIN can assign factory during user creation");
+        }
+        if (request.getRole() != null && request.getRole() != UserRole.VIEWER) {
+            throw new AppException(ErrorCode.ACCESS_DENIED, "Only ADMIN can set role during registration");
+        }
+
         // Check existing username
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED, "Username already exists");
@@ -66,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+            .role(UserRole.VIEWER)
                 .build();
 
         user = userRepository.save(user);
