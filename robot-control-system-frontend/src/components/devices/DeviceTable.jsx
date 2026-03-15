@@ -9,7 +9,7 @@ function StatusPill({ status }) {
   return <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${cls}`}>{label}</span>;
 }
 
-export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
+export default function DeviceTable({ devices, loading, onEdit, onDelete, onRowClick }) {
   const showActions = typeof onEdit === "function" || typeof onDelete === "function";
 
   if (loading) return <div className="px-5 py-10 text-center text-white/50 text-sm">Loading devices...</div>;
@@ -31,8 +31,14 @@ export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
-          {devices.map((d) => (
-            <tr key={d.deviceId} className="hover:bg-white/5 transition">
+          {devices.map((d) => {
+            const clickable = typeof onRowClick === "function";
+            return (
+            <tr
+              key={d.deviceId}
+              className={["hover:bg-white/5 transition", clickable ? "cursor-pointer" : ""].join(" ")}
+              onClick={clickable ? () => onRowClick(d) : undefined}
+            >
               <td className="px-5 py-4 text-left align-top">
                 <div className="text-white font-medium">{d.deviceName}</div>
                 <div className="text-xs text-white/50">SN: {d.serialNumber || "—"}</div>
@@ -47,16 +53,17 @@ export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
                 <td className="px-5 py-4 text-left align-top">
                   <div className="flex items-center gap-2">
                     {typeof onEdit === "function" && (
-                      <button type="button" onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(d); }} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
                     )}
                     {typeof onDelete === "function" && (
-                      <button type="button" onClick={() => onDelete(d)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(d); }} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
                     )}
                   </div>
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

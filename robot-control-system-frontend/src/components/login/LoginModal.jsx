@@ -11,6 +11,7 @@ function LoginModal({ isOpen, onClose }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [showForgotPassword, setShowForgotPassword]= useState(false);
 
   if (!isOpen) return null;
 
@@ -157,6 +158,13 @@ function LoginModal({ isOpen, onClose }) {
                   {errors.password}
                 </p>
               )}
+            <button
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-gray-500 hover:text-black mt-2 font medium transition"
+            >
+              Forgot Password?
+            </button>
+
             </div>
 
           </div>
@@ -191,6 +199,38 @@ function LoginModal({ isOpen, onClose }) {
         </div>
 
       </div>
+      
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-2xl font-bold text-black">Password Reset</h3>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="text-gray-400 hover:text-black text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-blue-900 text-sm font-medium">
+                To reset your password, please contact your administrator.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(false)}
+              className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

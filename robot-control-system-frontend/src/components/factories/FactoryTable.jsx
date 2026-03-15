@@ -13,7 +13,7 @@ function StatusPill({ active }) {
   );
 }
 
-export default function FactoryTable({ factories, loading, onEdit, onDelete }) {
+export default function FactoryTable({ factories, loading, onEdit, onDelete, onRowClick }) {
   const showActions = typeof onEdit === "function" || typeof onDelete === "function";
 
   if (loading) {
@@ -38,13 +38,18 @@ export default function FactoryTable({ factories, loading, onEdit, onDelete }) {
         <tbody className="divide-y divide-white/10">
           {factories.map((f) => {
             const active = String(f.factoryStatus).toLowerCase() === "active";
+            const clickable = typeof onRowClick === "function";
             return (
-              <tr key={f.factoryId} className="hover:bg-white/5 transition">
+              <tr
+                key={f.factoryId}
+                className={["hover:bg-white/5 transition", clickable ? "cursor-pointer" : ""].join(" ")}
+                onClick={clickable ? () => onRowClick(f) : undefined}
+              >
                 <td className="px-5 py-4 text-left align-top">
                   <div className="text-white font-medium">{f.factoryName}</div>
                   <div className="text-xs text-white/50">ID: {f.factoryId}</div>
                 </td>
-                <td className="px-5 py-4 text-white/70 text-left align-top">{f.location}</td>
+                <td className="px-5 py-4 text-white/70 text-left align-top">{f.location || "—"}</td>
                 <td className="px-5 py-4 text-left align-top">
                   <StatusPill active={active} />
                 </td>
@@ -54,7 +59,10 @@ export default function FactoryTable({ factories, loading, onEdit, onDelete }) {
                       {typeof onEdit === "function" && (
                         <button
                           type="button"
-                          onClick={() => onEdit(f)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(f);
+                          }}
                           className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition"
                         >
                           Edit
@@ -63,7 +71,10 @@ export default function FactoryTable({ factories, loading, onEdit, onDelete }) {
                       {typeof onDelete === "function" && (
                         <button
                           type="button"
-                          onClick={() => onDelete(f)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(f);
+                          }}
                           className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition"
                         >
                           Delete

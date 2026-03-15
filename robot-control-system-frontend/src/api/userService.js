@@ -1,9 +1,44 @@
 import axiosClient from "./axiosClient";
 
 // Get all users
-export const getUsers = async () => {
-  const res = await axiosClient.get("/api/users");
-  return res.data.data;
+const getUsersPage = async ({ page, size, role, status, search, sortBy, sortDir }) => {
+  const params = { page, size, sortBy, sortDir };
+  if (role) params.role = role;
+  if (status) params.status = status;
+  if (search) params.search = search;
+
+  const res = await axiosClient.get("/api/users", { params });
+  return res.data?.data;
+};
+
+export const getUsers = async (options = {}) => {
+  const {
+    size = 100,
+    role,
+    status,
+    search,
+    sortBy = "userId",
+    sortDir = "asc",
+  } = options;
+
+  const first = await getUsersPage({ page: 0, size, role, status, search, sortBy, sortDir });
+
+  // Backward compatibility: if API ever returns a plain array
+  if (Array.isArray(first)) return first;
+
+  const firstContent = Array.isArray(first?.content) ? first.content : [];
+  const totalPages = Number(first?.totalPages || 1);
+
+  if (!Number.isFinite(totalPages) || totalPages <= 1) return firstContent;
+
+  const pages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      getUsersPage({ page: i + 1, size, role, status, search, sortBy, sortDir })
+    )
+  );
+
+  const rest = pages.flatMap((p) => (Array.isArray(p?.content) ? p.content : []));
+  return [...firstContent, ...rest];
 };
 
 // Get user by ID

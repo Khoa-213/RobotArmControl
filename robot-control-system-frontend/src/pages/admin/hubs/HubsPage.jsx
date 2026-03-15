@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import AreaTable from "../../../components/areas/AreaTable";
 import HubTable from "../../../components/hubs/HubTable";
 import CreateHubModal from "../../../components/hubs/CreateHubModal";
 import EditHubModal from "../../../components/hubs/EditHubModal";
@@ -10,6 +12,10 @@ import { getRole, isAdminRole } from "../../../utils/auth";
 export default function HubsPage() {
   const canManage = isAdminRole(getRole());
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedAreaIdRaw = searchParams.get("areaId");
+  const selectedAreaId = selectedAreaIdRaw ? Number(selectedAreaIdRaw) : null;
+
   const [hubs, setHubs] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,48 +25,73 @@ export default function HubsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
- async function loadData() {
-  try {
-    setLoading(true);
-    setError("");
-    const factoriesData = await getFactories();
-    const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
+  async function loadAreas() {
+    try {
+      setLoading(true);
+      setError("");
+      const factoriesData = await getFactories();
+      const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
 
-    const allAreas = [];
-    for (const f of factoryList) {
-      try {
-        const areasData = await getAreasByFactory(f.factoryId);
-        if (Array.isArray(areasData)) allAreas.push(...areasData);
-      } catch { /* skip */ }
-    }
-    setAreas(allAreas);
-
-    const allHubs = [];
-    for (const a of allAreas) {
-      try {
-        const hubsData = await getHubsByArea(a.areaId);
-        if (Array.isArray(hubsData)) {
-          hubsData.forEach((h) => { h.areaName = a.areaName; });
-          allHubs.push(...hubsData);
+      const allAreas = [];
+      for (const f of factoryList) {
+        try {
+          const areasData = await getAreasByFactory(f.factoryId);
+          if (Array.isArray(areasData)) {
+            areasData.forEach((a) => {
+              a.factoryName = f.factoryName;
+            });
+            allAreas.push(...areasData);
+          }
+        } catch {
+          /* skip */
         }
-      } catch { /* skip */ }
+      }
+      setAreas(allAreas);
+    } catch (e) {
+      setError(e?.message || "Failed to load areas");
+    } finally {
+      setLoading(false);
     }
-    setHubs(allHubs);
-  } catch (e) {
-    setError(e?.message || "Failed to load data");
-  } finally {
-    setLoading(false);
   }
-}
 
-  useEffect(() => { loadData(); }, []);
+  async function loadHubsForArea(areaId) {
+    if (!areaId) {
+      setHubs([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const selectedArea = areas.find((a) => a.areaId === areaId);
+      const hubsData = await getHubsByArea(areaId);
+      const list = Array.isArray(hubsData) ? hubsData : [];
+      list.forEach((h) => {
+        h.areaName = selectedArea?.areaName || `Area #${areaId}`;
+      });
+      setHubs(list);
+    } catch (e) {
+      setError(e?.message || "Failed to load hubs");
+      setHubs([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const canCreate = canManage && areas.length > 0;
+  useEffect(() => { loadAreas(); }, []);
 
-  const enrichedHubs = hubs.map((h) => {
-    const area = areas.find((a) => a.areaId === h.areaId);
-    return { ...h, areaName: area?.areaName || `Area #${h.areaId}` };
-  });
+  useEffect(() => {
+    if (!areas || areas.length === 0) {
+      setHubs([]);
+      return;
+    }
+    if (selectedAreaId) {
+      loadHubsForArea(selectedAreaId);
+    } else {
+      setHubs([]);
+    }
+  }, [selectedAreaId, areas]);
+
+  const canCreate = canManage && !!selectedAreaId;
 
 async function handleCreate(formData) {
   try {
@@ -70,7 +101,7 @@ async function handleCreate(formData) {
     const area = areas.find((a) => a.areaId === areaId);
     const created = await createHub(areaId, rest);
     created.areaName = area?.areaName || `Area #${areaId}`;
-    setHubs((prev) => [created, ...prev]);
+    setHubs((prev) => (areaId === selectedAreaId ? [created, ...prev] : prev));
     setCreateOpen(false);
   } catch (e) {
     setError(e?.response?.data?.message || e?.message || "Failed to create hub");
@@ -84,7 +115,7 @@ async function handleCreate(formData) {
       setSaving(true);
       setError("");
       const updated = await updateHub(id, formData);
-      setHubs((prev) => prev.map((h) => (h.hubId === id ? updated : h)));
+      setHubs((prev) => prev.map((h) => (h.hubId === id ? { ...updated, areaName: h.areaName } : h)));
       setEditTarget(null);
     } catch (e) {
       setError(e?.message || "Failed to update hub");
@@ -103,6 +134,8 @@ async function handleCreate(formData) {
       setError(e?.message || "Failed to delete hub");
     }
   }
+
+  const selectedArea = selectedAreaId ? areas.find((a) => a.areaId === selectedAreaId) : null;
 
   return (
     <div className="w-full">
@@ -124,7 +157,7 @@ async function handleCreate(formData) {
           </button>
         ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
-            You must create an area before creating hubs.
+            Select an area before creating hubs.
           </div>
         ) : null}
       </div>
@@ -137,6 +170,7 @@ async function handleCreate(formData) {
             onSubmit={handleCreate}
             loading={saving}
             areas={areas}
+            initialAreaId={selectedAreaId}
           />
 
           <EditHubModal
@@ -151,19 +185,40 @@ async function handleCreate(formData) {
         </>
       )}
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <div className="text-xs uppercase tracking-wider text-white/50">
-            Hubs List ({hubs.length})
+      {!selectedAreaId ? (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10">
+            <div className="text-xs uppercase tracking-wider text-white/50">Select Area ({areas.length})</div>
           </div>
+          <AreaTable
+            areas={areas}
+            loading={loading}
+            onRowClick={(a) => setSearchParams({ areaId: String(a.areaId) })}
+          />
         </div>
-        <HubTable
-          hubs={enrichedHubs}
-          loading={loading}
-          onEdit={canManage ? (h) => setEditTarget(h) : undefined}
-          onDelete={canManage ? handleDelete : undefined}
-        />
-      </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              Hubs for {selectedArea?.areaName || `Area #${selectedAreaId}`} ({hubs.length})
+            </div>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
+              onClick={() => setSearchParams({})}
+              disabled={loading}
+            >
+              Change Area
+            </button>
+          </div>
+          <HubTable
+            hubs={hubs}
+            loading={loading}
+            onEdit={canManage ? (h) => setEditTarget(h) : undefined}
+            onDelete={canManage ? handleDelete : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

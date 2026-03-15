@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
-export default function CreateAreaModal({ open, onClose, onSubmit, loading, factories }) {
+export default function CreateAreaModal({ open, onClose, onSubmit, loading, factories, initialFactoryId }) {
   const [form, setForm] = useState({ areaName: "", areaDescription: "", factoryId: "" });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialFactoryId) return;
+    setForm((p) => (p.factoryId ? p : { ...p, factoryId: String(initialFactoryId) }));
+  }, [open, initialFactoryId]);
 
   if (!open) return null;
 
