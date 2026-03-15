@@ -6,8 +6,11 @@ import { getDevicesByHub, createDevice, updateDevice, deleteDevice } from "../..
 import { getHubsByArea } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function DevicesPage() {
+  const canManage = isAdminRole(getRole());
+
   const [devices, setDevices] = useState([]);
   const [hubs, setHubs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +65,7 @@ export default function DevicesPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const canCreate = hubs.length > 0;
+  const canCreate = canManage && hubs.length > 0;
 
   async function handleCreate(formData) {
     try {
@@ -122,21 +125,25 @@ export default function DevicesPage() {
           <button type="button" onClick={() => setCreateOpen(true)} className="h-10 px-4 rounded-lg bg-white text-neutral-950 font-medium hover:bg-white/90 transition disabled:opacity-60" disabled={loading}>
             + Create Device
           </button>
-        ) : (
+        ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
             You must create a hub before creating devices.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <CreateDeviceModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={saving} hubs={hubs} />
-      <EditDeviceModal open={!!editTarget} device={editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} loading={saving} />
+      {canManage && (
+        <>
+          <CreateDeviceModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={saving} hubs={hubs} />
+          <EditDeviceModal open={!!editTarget} device={editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} loading={saving} />
+        </>
+      )}
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
           <div className="text-xs uppercase tracking-wider text-white/50">Devices List ({devices.length})</div>
         </div>
-        <DeviceTable devices={devices} loading={loading} onEdit={(d) => setEditTarget(d)} onDelete={handleDelete} />
+        <DeviceTable devices={devices} loading={loading} onEdit={canManage ? (d) => setEditTarget(d) : undefined} onDelete={canManage ? handleDelete : undefined} />
       </div>
     </div>
   );

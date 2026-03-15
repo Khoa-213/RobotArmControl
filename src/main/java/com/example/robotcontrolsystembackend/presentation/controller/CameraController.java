@@ -1,12 +1,15 @@
 package com.example.robotcontrolsystembackend.presentation.controller;
 
+import com.example.robotcontrolsystembackend.application.dto.request.runtime.AiAnglesRequest;
 import com.example.robotcontrolsystembackend.application.dto.request.runtime.StartSessionRequest;
 import com.example.robotcontrolsystembackend.application.dto.response.runtime.SessionStatusResponse;
 import com.example.robotcontrolsystembackend.application.service.runtime.ControlSessionService;
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
+import com.example.robotcontrolsystembackend.config.websocket.RobotControlWebSocketHandler;
 import com.example.robotcontrolsystembackend.domain.enumtype.ControlMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/camera")
 @RequiredArgsConstructor
@@ -22,6 +28,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public class CameraController {
 
     private final ControlSessionService controlSessionService;
+    private final RobotControlWebSocketHandler webSocketHandler;
 
     @PostMapping("/start")
     @Operation(summary = "Start AI camera", description = "Start CAMERA control session and broadcast START over WebSocket. Edge devices that run ai_camera.py will activate their webcam. ADMIN and OPERATOR only.")
@@ -69,6 +76,40 @@ public class CameraController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(
                     ApiResponse.fail("CAMERA_STATUS_FAILED", "Failed to get AI Camera status: " + e.getMessage())
+            );
+        }
+    }
+
+    @PostMapping("/angles")
+    @Operation(
+            summary = "Send AI angles (REST fallback)",
+            description = "Fallback endpoint: browser can POST ai_angles and server will broadcast to /ws/robot-control for Unity clients. ADMIN and OPERATOR only."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<ApiResponse<Void>> sendAiAngles(@Valid @org.springframework.web.bind.annotation.RequestBody AiAnglesRequest request) {
+        try {
+            List<Double> angles = request.getAngles();
+            if (angles == null || angles.size() != 6) {
+                return ResponseEntity.badRequest().body(ApiResponse.fail("AI_ANGLES_INVALID", "angles must have exactly 6 values"));
+            }
+
+            // Validate numeric inputs
+            for (Double a : angles) {
+                if (a == null || a.isNaN() || a.isInfinite()) {
+                    return ResponseEntity.badRequest().body(ApiResponse.fail("AI_ANGLES_INVALID", "angles values must be finite numbers"));
+                }
+            }
+
+            // Broadcast as the same payload Unity expects.
+            String payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
+                    Map.of("type", "ai_angles", "angles", angles)
+            );
+            webSocketHandler.broadcastMessage(payload);
+
+            return ResponseEntity.ok(ApiResponse.ok("ai_angles broadcast", null));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail("AI_ANGLES_SEND_FAILED", "Failed to send ai_angles: " + e.getMessage())
             );
         }
     }
