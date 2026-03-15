@@ -94,6 +94,7 @@ export function useAiCamera() {
 
   const [wsConnected, setWsConnected] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
+  const [sessionDeviceId, setSessionDeviceId] = useState(null);
   const [isCameraRunning, setIsCameraRunning] = useState(false);
   const [isSendingAngles, setIsSendingAngles] = useState(false);
   const [angles, setAngles] = useState(() => [0, 0, 0, 0, 0, 0]);
@@ -106,6 +107,7 @@ export function useAiCamera() {
 
   const wsConnectedRef = useRef(false);
   const sessionActiveRef = useRef(false);
+  const sessionDeviceIdRef = useRef(null);
   const runningRef = useRef(false);
   const isSendingAnglesRef = useRef(false);
 
@@ -119,6 +121,7 @@ export function useAiCamera() {
   const anglesRef = useRef([0, 0, 0, 0, 0, 0]);
   const lastTickRef = useRef(0);
   const lastSendRef = useRef(0);
+  const lastRestSendRef = useRef(0);
   const palmXFilteredRef = useRef(null);
 
   const selectedJointRef = useRef(0);
@@ -215,12 +218,32 @@ export function useAiCamera() {
     return svc;
   }
 
+  function getPreferredDeviceId() {
+    // Minimal mechanism (no new UI): allow selecting deviceId via URL (?deviceId=)
+    // or existing localStorage keys if the app already stores it.
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const fromQs = qs.get("deviceId");
+      if (fromQs != null && String(fromQs).trim() !== "") return Number(fromQs);
+    } catch {
+      // ignore
+    }
+
+    const fromStorage = localStorage.getItem("deviceId") || localStorage.getItem("selectedDeviceId");
+    if (fromStorage != null && String(fromStorage).trim() !== "") return Number(fromStorage);
+    return null;
+  }
+
   async function refreshStatus() {
     try {
       const status = await cameraService.status();
       const active = !!status?.sessionActive;
       sessionActiveRef.current = active;
       setSessionActive(active);
+
+      const dev = status?.deviceId ?? null;
+      sessionDeviceIdRef.current = dev;
+      setSessionDeviceId(dev);
     } catch (e) {
       setError(e?.message || "Failed to fetch camera status");
     }
@@ -380,9 +403,13 @@ export function useAiCamera() {
     setError("");
 
     try {
-      await cameraService.start();
+      const started = await cameraService.start(getPreferredDeviceId());
       sessionActiveRef.current = true;
       setSessionActive(true);
+
+      const dev = started?.deviceId ?? null;
+      sessionDeviceIdRef.current = dev;
+      setSessionDeviceId(dev);
     } catch (e) {
       setError(e?.response?.data?.message || e?.message || "Failed to start camera session");
       return;
@@ -409,6 +436,7 @@ export function useAiCamera() {
     setFingersCount(0);
     lastTickRef.current = performance.now();
     lastSendRef.current = 0;
+    lastRestSendRef.current = 0;
     palmXFilteredRef.current = null;
 
     consecutiveSendErrorsRef.current = 0;
@@ -438,6 +466,8 @@ export function useAiCamera() {
       setError(e?.response?.data?.message || e?.message || "Failed to stop camera session");
     } finally {
       stopLocal();
+      sessionDeviceIdRef.current = null;
+      setSessionDeviceId(null);
     }
   }
 
@@ -463,6 +493,7 @@ export function useAiCamera() {
     isViewer,
     wsConnected,
     sessionActive,
+    sessionDeviceId,
     isCameraRunning,
     isSendingAngles,
     angles,
