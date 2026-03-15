@@ -15,7 +15,7 @@ class PushMessagesScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         
-        // Tin nhắn 1: Trạng thái bình thường (Màu xanh lá)
+        // Message 1: normal status (green)
         _buildMessageTile(
           icon: Icons.check_circle,
           color: Colors.green,
@@ -24,7 +24,7 @@ class PushMessagesScreen extends StatelessWidget {
           time: "10:30 AM",
         ),
         
-        // Tin nhắn 2: Cảnh báo pin yếu (Màu cam)
+        // Message 2: low battery warning (orange)
         _buildMessageTile(
           icon: Icons.warning_amber_rounded,
           color: Colors.orange,
@@ -33,7 +33,7 @@ class PushMessagesScreen extends StatelessWidget {
           time: "09:45 AM",
         ),
         
-        // Tin nhắn 3: Lỗi mất kết nối (Màu đỏ)
+        // Message 3: connection error (red)
         _buildMessageTile(
           icon: Icons.error_outline,
           color: Colors.red,
@@ -42,7 +42,7 @@ class PushMessagesScreen extends StatelessWidget {
           time: "08:12 AM",
         ),
         
-        // Tin nhắn 4: Thông báo hệ thống (Màu xanh dương)
+        // Message 4: system notice (blue)
         _buildMessageTile(
           icon: Icons.info_outline,
           color: Colors.blue,
@@ -54,7 +54,7 @@ class PushMessagesScreen extends StatelessWidget {
     );
   }
 
-  // Widget dùng chung để vẽ từng khung tin nhắn
+  // Reusable widget to render each notification tile.
   Widget _buildMessageTile({
     required IconData icon,
     required Color color,
@@ -69,7 +69,7 @@ class PushMessagesScreen extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

@@ -14,7 +14,7 @@ export default function CreateFactoryModal({ open, onClose, onSubmit, loading })
       return;
     }
     setError("");
-    onSubmit({ name, location, status: form.status });
+    onSubmit({ factoryName: name, location });
     setForm({ name: "", location: "", status: "Active" });
   }
 

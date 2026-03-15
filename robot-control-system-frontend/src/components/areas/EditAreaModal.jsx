@@ -1,27 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
-export default function EditAreaModal({ open, area, onClose, onSubmit, loading, factories }) {
-  const [form, setForm] = useState({ name: "", factoryId: "", status: "Active" });
+export default function EditAreaModal({ open, area, onClose, onSubmit, loading }) {
+  const [form, setForm] = useState(() => ({
+    areaName: area?.areaName || "",
+    areaDescription: area?.areaDescription || "",
+  }));
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (area) {
-      setForm({
-        name: area.name || "",
-        factoryId: area.factoryId ? String(area.factoryId) : "",
-        status: area.status || "Active",
-      });
-    }
-  }, [area]);
 
   if (!open || !area) return null;
 
   function handleSubmit() {
-    const name = form.name.trim();
-    if (!name) { setError("Name is required."); return; }
-    if (!form.factoryId) { setError("Please select a factory."); return; }
+    const areaName = form.areaName.trim();
+    if (!areaName) { setError("Name is required."); return; }
     setError("");
-    onSubmit(area.id, { name, factoryId: Number(form.factoryId), status: form.status });
+    onSubmit(area.areaId, { areaName, areaDescription: form.areaDescription.trim() });
   }
 
   function handleClose() { setError(""); onClose(); }
@@ -42,23 +34,11 @@ export default function EditAreaModal({ open, area, onClose, onSubmit, loading, 
         <div className="mt-4 space-y-3">
           <label className="block">
             <div className="text-xs text-white/60 mb-1">Name</div>
-            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.areaName} onChange={(e) => setForm((p) => ({ ...p, areaName: e.target.value }))} />
           </label>
           <label className="block">
-            <div className="text-xs text-white/60 mb-1">Factory</div>
-            <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.factoryId} onChange={(e) => setForm((p) => ({ ...p, factoryId: e.target.value }))}>
-              <option className="bg-neutral-900" value="">Select a factory...</option>
-              {(factories || []).map((f) => (
-                <option key={f.id} className="bg-neutral-900" value={f.id}>{f.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Status</div>
-            <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-              <option className="bg-neutral-900" value="Active">Active</option>
-              <option className="bg-neutral-900" value="Inactive">Inactive</option>
-            </select>
+            <div className="text-xs text-white/60 mb-1">Description</div>
+            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.areaDescription} onChange={(e) => setForm((p) => ({ ...p, areaDescription: e.target.value }))} />
           </label>
         </div>
 

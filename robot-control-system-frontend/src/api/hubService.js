@@ -1,44 +1,38 @@
 // Hub API service — TODO: connect to real backend
+import axiosClient from "./axiosClient";
 
-let _mockHubs = [];
-let _nextId = 1;
 
-export const getHubs = async () => {
-  // TODO: GET /api/hubs
-  return [..._mockHubs];
-};
 
-export const getHubById = async (id) => {
-  // TODO: GET /api/hubs/:id
-  return _mockHubs.find((h) => h.id === id) || null;
-};
-
-export const getHubsByArea = async (areaId) => {
+export const getHubsByArea = async (areaId, search = "", status = "") => {
   // TODO: GET /api/areas/:areaId/hubs
-  return _mockHubs.filter((h) => h.areaId === areaId);
+const params = {};
+  if (search) params.search = search;
+  if (status) params.status = status;
+  const response = await axiosClient.get(`/api/areas/${areaId}/hubs`, { params });
+  return response.data.data;
 };
 
-export const createHub = async (data) => {
+export const createHub = async (areaId,data) => {
   // TODO: POST /api/hubs
-  const hub = {
-    id: _nextId++,
-    ...data,
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-  _mockHubs = [hub, ..._mockHubs];
-  return hub;
+  const response = await axiosClient.post(`/api/areas/${areaId}/hubs`, data);
+  return response.data.data;
 };
 
-export const updateHub = async (id, data) => {
+export const updateHub = async (hubId, data) => {
   // TODO: PUT /api/hubs/:id
-  _mockHubs = _mockHubs.map((h) =>
-    h.id === id ? { ...h, ...data } : h
-  );
-  return _mockHubs.find((h) => h.id === id);
+  const response = await axiosClient.put(`/api/hubs/${hubId}`, data);
+  return response.data.data;
 };
 
-export const deleteHub = async (id) => {
+export const deleteHub = async (hubId) => {
   // TODO: DELETE /api/hubs/:id
-  _mockHubs = _mockHubs.filter((h) => h.id !== id);
-  return { success: true };
+  const response = await axiosClient.delete(`/api/hubs/${hubId}`);
+  return response.data.data;
+
+};
+
+export const activateHub = async (hubId) => {
+  //TODO: PATCH /api/hubs/:hubId/status
+  const response = await axiosClient.patch(`/api/hubs/${hubId}/status`);
+  return response.data.data;
 };

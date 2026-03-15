@@ -52,7 +52,7 @@ export default function FactoriesPage() {
       setSaving(true);
       setError("");
       const updated = await updateFactory(id, formData);
-      setFactories((prev) => prev.map((f) => (f.id === id ? updated : f)));
+      setFactories((prev) => prev.map((f) => (f.factoryId === id ? updated : f)));
       setEditTarget(null);
     } catch (e) {
       setError(e?.message || "Failed to update factory");
@@ -62,11 +62,11 @@ export default function FactoriesPage() {
   }
 
   async function handleDelete(factory) {
-    if (!window.confirm(`Delete "${factory.name}"? This action cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${factory.factoryName}"? This action cannot be undone.`)) return;
     try {
       setError("");
-      await deleteFactory(factory.id);
-      setFactories((prev) => prev.filter((f) => f.id !== factory.id));
+      await deleteFactory(factory.factoryId);
+      setFactories((prev) => prev.filter((f) => f.factoryId !== factory.factoryId));
     } catch (e) {
       setError(e?.message || "Failed to delete factory");
     }
@@ -99,6 +99,7 @@ export default function FactoriesPage() {
       />
 
       <EditFactoryModal
+        key={editTarget?.factoryId ?? "edit-factory"}
         open={!!editTarget}
         factory={editTarget}
         onClose={() => setEditTarget(null)}

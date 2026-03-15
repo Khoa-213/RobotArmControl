@@ -1,3 +1,7 @@
-2026/03/08-13:47:09.386 67ec Reusing MANIFEST C:\Users\quang\AppData\Local\Temp\flutter_tools.63cd07c1\flutter_tools_chrome_device.60b01fa1\Default\Local Storage\leveldb/MANIFEST-000001
-2026/03/08-13:47:09.389 67ec Recovering log #3
-2026/03/08-13:47:09.391 67ec Reusing old log C:\Users\quang\AppData\Local\Temp\flutter_tools.63cd07c1\flutter_tools_chrome_device.60b01fa1\Default\Local Storage\leveldb/000003.log 
+2026/03/14-21:08:19.559 3d4c Reusing MANIFEST C:\Users\quang\AppData\Local\Temp\flutter_tools.a67ba522\flutter_tools_chrome_device.3187347\Default\Local Storage\leveldb/MANIFEST-000001
+2026/03/14-21:08:19.562 3d4c Recovering log #4
+2026/03/14-21:08:19.563 3d4c Reusing old log C:\Users\quang\AppData\Local\Temp\flutter_tools.a67ba522\flutter_tools_chrome_device.3187347\Default\Local Storage\leveldb/000004.log 
+2026/03/14-21:08:19.564 3d4c Delete type=0 #3
+2026/03/14-21:33:43.530 62e0 Level-0 table #8: started
+2026/03/14-21:33:43.534 62e0 Level-0 table #8: 44805 bytes OK
+2026/03/14-21:33:43.539 62e0 Delete type=0 #4

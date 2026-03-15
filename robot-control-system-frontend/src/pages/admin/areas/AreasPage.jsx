@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import AreaTable from "../../../components/areas/AreaTable";
 import CreateAreaModal from "../../../components/areas/CreateAreaModal";
 import EditAreaModal from "../../../components/areas/EditAreaModal";
-import { getAreas, createArea, updateArea, deleteArea } from "../../../api/areaService";
+import { getAreasByFactory, createArea, updateArea, deleteArea } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
 
 export default function AreasPage() {
@@ -19,9 +19,21 @@ export default function AreasPage() {
     try {
       setLoading(true);
       setError("");
-      const [areasData, factoriesData] = await Promise.all([getAreas(), getFactories()]);
-      setAreas(Array.isArray(areasData) ? areasData : []);
-      setFactories(Array.isArray(factoriesData) ? factoriesData : []);
+      const factoriesData = await getFactories();
+      const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
+      setFactories(factoryList);
+
+      const allAreas = [];
+      for (const f of factoryList) {
+        try {
+          const areasData = await getAreasByFactory(f.factoryId);
+          if (Array.isArray(areasData)) {
+            areasData.forEach((a) => { a.factoryName = f.factoryName; });
+            allAreas.push(...areasData);
+          }
+        } catch { /* factory may have no areas */ }
+      }
+      setAreas(allAreas);
     } catch (e) {
       setError(e?.message || "Failed to load data");
     } finally {
@@ -33,50 +45,50 @@ export default function AreasPage() {
 
   const canCreate = factories.length > 0;
 
-  // Enrich area rows with factory name
-  const enrichedAreas = areas.map((a) => {
-    const factory = factories.find((f) => f.id === a.factoryId);
-    return { ...a, factoryName: factory?.name || `Factory #${a.factoryId}` };
-  });
-
   async function handleCreate(formData) {
     try {
       setSaving(true);
       setError("");
-      const factory = factories.find((f) => f.id === formData.factoryId);
-      const created = await createArea(formData);
-      created.factoryName = factory?.name || `Factory #${formData.factoryId}`;
+      const { factoryId, areaName, areaDescription } = formData;
+      const created = await createArea(factoryId, { areaName, areaDescription });
+      const factory = factories.find((f) => f.factoryId === factoryId);
+      created.factoryName = factory?.factoryName || `Factory #${factoryId}`;
       setAreas((prev) => [created, ...prev]);
       setCreateOpen(false);
     } catch (e) {
-      setError(e?.message || "Failed to create area");
+      setError(e?.response?.data?.message || e?.message || "Failed to create area");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleEdit(id, formData) {
+  async function handleEdit(areaId, formData) {
     try {
       setSaving(true);
       setError("");
-      const updated = await updateArea(id, formData);
-      setAreas((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      const updated = await updateArea(areaId, formData);
+      setAreas((prev) => prev.map((a) => {
+        if (a.areaId === areaId) {
+          return { ...updated, factoryName: a.factoryName };
+        }
+        return a;
+      }));
       setEditTarget(null);
     } catch (e) {
-      setError(e?.message || "Failed to update area");
+      setError(e?.response?.data?.message || e?.message || "Failed to update area");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(area) {
-    if (!window.confirm(`Delete "${area.name}"? This action cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${area.areaName}"? This action cannot be undone.`)) return;
     try {
       setError("");
-      await deleteArea(area.id);
-      setAreas((prev) => prev.filter((a) => a.id !== area.id));
+      await deleteArea(area.areaId);
+      setAreas((prev) => prev.filter((a) => a.areaId !== area.areaId));
     } catch (e) {
-      setError(e?.message || "Failed to delete area");
+      setError(e?.response?.data?.message || e?.message || "Failed to delete area");
     }
   }
 
@@ -114,12 +126,12 @@ export default function AreasPage() {
       />
 
       <EditAreaModal
+        key={editTarget?.areaId ?? "edit-area"}
         open={!!editTarget}
         area={editTarget}
         onClose={() => setEditTarget(null)}
         onSubmit={handleEdit}
         loading={saving}
-        factories={factories}
       />
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
@@ -129,7 +141,7 @@ export default function AreasPage() {
           </div>
         </div>
         <AreaTable
-          areas={enrichedAreas}
+          areas={areas}
           loading={loading}
           onEdit={(a) => setEditTarget(a)}
           onDelete={handleDelete}

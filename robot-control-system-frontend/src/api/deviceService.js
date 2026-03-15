@@ -1,44 +1,38 @@
 // Device API service — TODO: connect to real backend
 
-let _mockDevices = [];
-let _nextId = 1;
+import axiosClient from "./axiosClient";
 
-export const getDevices = async () => {
+export const getDevicesByHub = async (hubId, search = "", status = "") => {
   // TODO: GET /api/devices
-  return [..._mockDevices];
+const params={};
+  if (search) params.search = search;
+  if (status) params.status = status;
+  const response = await axiosClient.get(`/api/hubs/${hubId}/devices`, {params});
+  return response.data.data;
 };
 
-export const getDeviceById = async (id) => {
-  // TODO: GET /api/devices/:id
-  return _mockDevices.find((d) => d.id === id) || null;
-};
 
-export const getDevicesByHub = async (hubId) => {
-  // TODO: GET /api/hubs/:hubId/devices
-  return _mockDevices.filter((d) => d.hubId === hubId);
-};
-
-export const createDevice = async (data) => {
+export const createDevice = async (hubId, data) => {
   // TODO: POST /api/devices
-  const device = {
-    id: _nextId++,
-    ...data,
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-  _mockDevices = [device, ..._mockDevices];
-  return device;
+  const response = await axiosClient.post(`/api/hubs/${hubId}/devices`, data);
+  return response.data.data;
 };
 
-export const updateDevice = async (id, data) => {
+export const updateDevice = async (deviceId, data) => {
   // TODO: PUT /api/devices/:id
-  _mockDevices = _mockDevices.map((d) =>
-    d.id === id ? { ...d, ...data } : d
-  );
-  return _mockDevices.find((d) => d.id === id);
+  const response = await axiosClient.put(`/api/devices/${deviceId}`, data);
+  return response.data.data;
 };
 
-export const deleteDevice = async (id) => {
+export const deleteDevice = async (deviceId) => {
   // TODO: DELETE /api/devices/:id
-  _mockDevices = _mockDevices.filter((d) => d.id !== id);
-  return { success: true };
-};
+  const response = await axiosClient.delete(`/api/devices/${deviceId}`);
+  return response.data.data;
+}
+
+export const activateDevice = async (deviceId) => {
+  //TODO : CHECK STATSU INACTIVE OR ACTIVE, PATCH /api/deivces/{deviceId}/status
+  const response = await axiosClient.patch(`/api/devices/${deviceId}/status`);
+  return response.data.data;
+}
+

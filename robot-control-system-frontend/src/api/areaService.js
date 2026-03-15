@@ -1,44 +1,37 @@
-// Area API service — TODO: connect to real backend
+// Area API service
+import axiosClient from "./axiosClient";
 
-let _mockAreas = [];
-let _nextId = 1;
-
-export const getAreas = async () => {
-  // TODO: GET /api/areas
-  return [..._mockAreas];
+// GET /api/factories/{factoryId}/areas
+export const getAreasByFactory = async (factoryId, search = "", status = "") => {
+  const params = {};
+  if (search) params.search = search;
+  if (status) params.status = status;
+  const response = await axiosClient.get(`/api/factories/${factoryId}/areas`, { params });
+  return response.data.data;
 };
 
-export const getAreaById = async (id) => {
-  // TODO: GET /api/areas/:id
-  return _mockAreas.find((a) => a.id === id) || null;
+// POST /api/factories/{factoryId}/areas
+// Body: { areaName, areaDescription }
+export const createArea = async (factoryId, data) => {
+  const response = await axiosClient.post(`/api/factories/${factoryId}/areas`, data);
+  return response.data.data;
 };
 
-export const getAreasByFactory = async (factoryId) => {
-  // TODO: GET /api/factories/:factoryId/areas
-  return _mockAreas.filter((a) => a.factoryId === factoryId);
+// PUT /api/areas/{areaId}
+// Body: { areaName, areaDescription }
+export const updateArea = async (areaId, data) => {
+  const response = await axiosClient.put(`/api/areas/${areaId}`, data);
+  return response.data.data;
 };
 
-export const createArea = async (data) => {
-  // TODO: POST /api/areas
-  const area = {
-    id: _nextId++,
-    ...data,
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-  _mockAreas = [area, ..._mockAreas];
-  return area;
+// DELETE /api/areas/{areaId}
+export const deleteArea = async (areaId) => {
+  const response = await axiosClient.delete(`/api/areas/${areaId}`);
+  return response.data.data;
 };
 
-export const updateArea = async (id, data) => {
-  // TODO: PUT /api/areas/:id
-  _mockAreas = _mockAreas.map((a) =>
-    a.id === id ? { ...a, ...data } : a
-  );
-  return _mockAreas.find((a) => a.id === id);
-};
-
-export const deleteArea = async (id) => {
-  // TODO: DELETE /api/areas/:id
-  _mockAreas = _mockAreas.filter((a) => a.id !== id);
-  return { success: true };
+// PATCH /api/areas/{areaId}/status (kích hoạt lại area)
+export const activateArea = async (areaId) => {
+  const response = await axiosClient.patch(`/api/areas/${areaId}/status`);
+  return response.data.data;
 };

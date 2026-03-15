@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from "react";
 
-export default function EditDeviceModal({ open, device, onClose, onSubmit, loading, hubs }) {
-  const [form, setForm] = useState({ name: "", hubId: "", type: "", status: "Active" });
+export default function EditDeviceModal({ open, device, onClose, onSubmit, loading }) {
+  const [form, setForm] = useState({
+    deviceName: "", deviceType: "RobotArm", robotType: "Unity",
+    model: "", serialNumber: "", connectionType: "USB",
+  });
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (device) {
       setForm({
-        name: device.name || "",
-        hubId: device.hubId ? String(device.hubId) : "",
-        type: device.type || "",
-        status: device.status || "Active",
+        deviceName: device.deviceName || "",
+        deviceType: device.deviceType || "RobotArm",
+        robotType: device.robotType || "Unity",
+        model: device.model || "",
+        serialNumber: device.serialNumber || "",
+        connectionType: device.connectionType || "USB",
       });
     }
   }, [device]);
@@ -18,14 +23,37 @@ export default function EditDeviceModal({ open, device, onClose, onSubmit, loadi
   if (!open || !device) return null;
 
   function handleSubmit() {
-    const name = form.name.trim();
-    if (!name) { setError("Name is required."); return; }
-    if (!form.hubId) { setError("Please select a hub."); return; }
+    if (!form.deviceName.trim()) { setError("Name is required."); return; }
     setError("");
-    onSubmit(device.id, { name, hubId: Number(form.hubId), type: form.type.trim(), status: form.status });
+    onSubmit(device.deviceId, {
+      deviceName: form.deviceName.trim(),
+      deviceType: form.deviceType,
+      robotType: form.robotType,
+      model: form.model.trim(),
+      serialNumber: form.serialNumber.trim(),
+      connectionType: form.connectionType,
+    });
   }
 
   function handleClose() { setError(""); onClose(); }
+
+  const field = (label, key) => (
+    <label className="block">
+      <div className="text-xs text-white/60 mb-1">{label}</div>
+      <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+        value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} />
+    </label>
+  );
+
+  const select = (label, key, options) => (
+    <label className="block">
+      <div className="text-xs text-white/60 mb-1">{label}</div>
+      <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+        value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}>
+        {options.map((o) => <option key={o} className="bg-neutral-900" value={o}>{o}</option>)}
+      </select>
+    </label>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -41,30 +69,12 @@ export default function EditDeviceModal({ open, device, onClose, onSubmit, loadi
         {error && <div className="mt-3 text-sm text-red-300">{error}</div>}
 
         <div className="mt-4 space-y-3">
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Name</div>
-            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-          </label>
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Type</div>
-            <input className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} />
-          </label>
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Hub</div>
-            <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.hubId} onChange={(e) => setForm((p) => ({ ...p, hubId: e.target.value }))}>
-              <option className="bg-neutral-900" value="">Select a hub...</option>
-              {(hubs || []).map((h) => (
-                <option key={h.id} className="bg-neutral-900" value={h.id}>{h.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <div className="text-xs text-white/60 mb-1">Status</div>
-            <select className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-              <option className="bg-neutral-900" value="Active">Active</option>
-              <option className="bg-neutral-900" value="Inactive">Inactive</option>
-            </select>
-          </label>
+          {field("Device Name", "deviceName")}
+          {select("Device Type", "deviceType", ["RobotArm"])}
+          {select("Robot Type", "robotType", ["Unity", "Real"])}
+          {field("Model", "model")}
+          {field("Serial Number", "serialNumber")}
+          {select("Connection Type", "connectionType", ["USB", "Serial", "TCP"])}
         </div>
 
         <div className="mt-5 flex justify-end gap-2">

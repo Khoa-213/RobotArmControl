@@ -1,11 +1,18 @@
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import SidebarAdmin from "./SidebarAdmin";
 import HeaderAdmin from "./HeaderAdmin";
+import { authApi } from "../../api/authApi";
 
 function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+
+  const user = useMemo(() => {
+    const name = localStorage.getItem("username") || "Admin";
+    return { name, avatarUrl: "" };
+  }, []);
 
   //hardcode nhà máy 
     const factories = [
@@ -34,11 +41,14 @@ function AdminLayout() {
           <div className="flex-1 min-w-0">
             <HeaderAdmin
               factories={factories}
-              user={{ name: "Admin", avatarUrl: "" }}
+              user={user}
               onSelectFactory={() => {}}
               onProfile={() => {}}
-              onSetting={() => {}}
-              onLogout={() => {}}
+              onSetting={() => navigate("/admin/settings")}
+              onLogout={() => {
+                authApi.logout();
+                navigate("/");
+              }}
             />
           </div>
         </header>

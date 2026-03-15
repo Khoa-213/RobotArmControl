@@ -1,7 +1,3 @@
-2026/03/08-13:47:09.361 3f60 Reusing MANIFEST C:\Users\quang\AppData\Local\Temp\flutter_tools.63cd07c1\flutter_tools_chrome_device.60b01fa1\Default\Site Characteristics Database/MANIFEST-000001
-2026/03/08-13:47:09.362 3f60 Recovering log #3
-2026/03/08-13:47:09.362 3f60 Level-0 table #6: started
-2026/03/08-13:47:09.367 3f60 Level-0 table #6: 7178 bytes OK
-2026/03/08-13:47:09.367 3f60 Recovering log #6
-2026/03/08-13:47:09.368 3f60 Reusing old log C:\Users\quang\AppData\Local\Temp\flutter_tools.63cd07c1\flutter_tools_chrome_device.60b01fa1\Default\Site Characteristics Database/000006.log 
-2026/03/08-13:47:09.372 3f60 Delete type=0 #3
+2026/03/14-21:08:19.533 7df4 Reusing MANIFEST C:\Users\quang\AppData\Local\Temp\flutter_tools.a67ba522\flutter_tools_chrome_device.3187347\Default\Site Characteristics Database/MANIFEST-000001
+2026/03/14-21:08:19.533 7df4 Recovering log #6
+2026/03/14-21:08:19.534 7df4 Reusing old log C:\Users\quang\AppData\Local\Temp\flutter_tools.a67ba522\flutter_tools_chrome_device.3187347\Default\Site Characteristics Database/000006.log 
