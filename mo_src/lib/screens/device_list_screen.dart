@@ -58,6 +58,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Devices • ${widget.hub.name}',
+      currentTabIndex: 1,
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -111,7 +112,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                   status: device.status,
                   onTap: () {
                     Navigator.of(context).pushAndRemoveUntil(
-                      appRoute(const MainScreen(initialIndex: 3)),
+                      appRoute(const MainScreen(initialIndex: 2)),
                       (route) => false,
                     );
                   },
