@@ -59,13 +59,18 @@ function countFingers(landmarks, handedness) {
   if (!landmarks || landmarks.length < 21) return 0;
 
   let fingers = 0;
-  // 4 ngón giữ nguyên điều kiện cũ
-  if (landmarks[8].y < landmarks[6].y) fingers += 1;    // trỏ
-  if (landmarks[12].y < landmarks[10].y) fingers += 1;  // giữa
-  if (landmarks[16].y < landmarks[14].y) fingers += 1;  // áp út
-  if (landmarks[20].y < landmarks[18].y) fingers += 1;  // út
+  const FINGER_OPEN_THRESHOLD = 0.015;
 
-  // Ngón cái: tối ưu nhận diện
+  // Trỏ
+  if (landmarks[8].y < landmarks[6].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Giữa
+  if (landmarks[12].y < landmarks[10].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Áp út
+  if (landmarks[16].y < landmarks[14].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Út
+  if (landmarks[20].y < landmarks[18].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+
+  // Ngón cái giữ nguyên logic tối ưu như hiện tại
   const thumbDx = landmarks[4].x - landmarks[2].x;
   const thumbDy = Math.abs(landmarks[4].y - landmarks[2].y);
   let thumbOpen = false;
@@ -142,7 +147,6 @@ export function useAiCamera() {
 
   const consecutiveSendErrorsRef = useRef(0);
   const sendErrorShownRef = useRef(false);
-
   const consecutiveWsSendErrorsRef = useRef(0);
 
   const wsServiceRef = useRef(null);
