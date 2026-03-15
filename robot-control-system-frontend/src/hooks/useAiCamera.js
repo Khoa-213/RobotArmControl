@@ -344,27 +344,42 @@ export function useAiCamera() {
 
       // send at ~20 msg/s
       const sendIntervalMs = 50;
-      if (isSendingAnglesRef.current && wsConnectedRef.current) {
-        if (now - lastSendRef.current >= sendIntervalMs) {
-          lastSendRef.current = now;
-          const svc = wsServiceRef.current;
-          const payload = { type: "ai_angles", angles: next.map((n) => Number(n)) };
-          const ok = svc?.sendJson(payload);
-          if (!ok) {
-            consecutiveWsSendErrorsRef.current += 1;
-          } else {
-            consecutiveWsSendErrorsRef.current = 0;
-          }
+      if (!isSendingAnglesRef.current) return;
+      if (now - lastSendRef.current < sendIntervalMs) return;
+      lastSendRef.current = now;
 
-          // Throttled diagnostics (once/sec)
-          if (now - lastAiAnglesConsoleLogRef.current >= 1000) {
-            lastAiAnglesConsoleLogRef.current = now;
-            console.debug("[AI Camera] sent ai_angles:", payload);
-          }
+      const deviceId = sessionDeviceIdRef.current;
+      const payloadAngles = next.map((n) => Number(n));
+      const payload = { type: "ai_angles", deviceId, angles: payloadAngles };
 
-          setAngles(next);
+      // Preferred path: REST -> BE will forward/broadcast over WS to Unity.
+      // Keep it slower to reduce backend load.
+      const restMinIntervalMs = 100;
+      if (now - lastRestSendRef.current >= restMinIntervalMs) {
+        lastRestSendRef.current = now;
+        cameraService.sendAngles(payloadAngles, deviceId).catch(() => {
+          // keep UI minimal; status pills indicate connectivity
+        });
+      }
+
+      // Optional: WS direct (useful for debugging), but do not depend on it.
+      if (wsConnectedRef.current) {
+        const svc = wsServiceRef.current;
+        const ok = svc?.sendJson(payload);
+        if (!ok) {
+          consecutiveWsSendErrorsRef.current += 1;
+        } else {
+          consecutiveWsSendErrorsRef.current = 0;
         }
       }
+
+      // Throttled diagnostics (once/sec)
+      if (now - lastAiAnglesConsoleLogRef.current >= 1000) {
+        lastAiAnglesConsoleLogRef.current = now;
+        console.debug("[AI Camera] send ai_angles:", payload);
+      }
+
+      setAngles(next);
     });
 
     handsRef.current = hands;
