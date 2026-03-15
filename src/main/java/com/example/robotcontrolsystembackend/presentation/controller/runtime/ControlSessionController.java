@@ -4,7 +4,9 @@ import com.example.robotcontrolsystembackend.application.dto.request.runtime.Sta
 import com.example.robotcontrolsystembackend.application.dto.response.runtime.SessionStatusResponse;
 import com.example.robotcontrolsystembackend.application.service.runtime.ControlSessionService;
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
+import com.example.robotcontrolsystembackend.common.response.PageResponse;
 import com.example.robotcontrolsystembackend.domain.enumtype.ControlMode;
+import com.example.robotcontrolsystembackend.domain.enumtype.SessionStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,27 +49,27 @@ public class ControlSessionController {
     @GetMapping
     @Operation(summary = "Get all sessions", description = "Retrieve all control sessions. Filter by status (ACTIVE/ENDED/etc.), paginate with page & size (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getAllSessions(
-            @RequestParam(required = false) String status,
+    public ResponseEntity<ApiResponse<PageResponse<SessionStatusResponse>>> getAllSessions(
+            @RequestParam(required = false) SessionStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        // TODO: Implement with ControlSessionService — filter by status
-        return ResponseEntity.ok(ApiResponse.<String>builder()
+        PageResponse<SessionStatusResponse> response = controlSessionService.getSessions(status, page, size);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<SessionStatusResponse>>builder()
                 .success(true)
                 .message("Sessions retrieved successfully")
-                .data("List of sessions")
+                .data(response)
                 .build());
     }
 
     @GetMapping("/{sessionId}")
     @Operation(summary = "Get session by ID", description = "Retrieve a specific control session (All roles)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
-    public ResponseEntity<ApiResponse<String>> getSessionById(@PathVariable Long sessionId) {
-        // TODO: Implement with ControlSessionService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
+        public ResponseEntity<ApiResponse<SessionStatusResponse>> getSessionById(@PathVariable Long sessionId) {
+                SessionStatusResponse response = controlSessionService.getSessionById(sessionId);
+                return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
                 .success(true)
                 .message("Session retrieved successfully")
-                .data("Session " + sessionId)
+                                .data(response)
                 .build());
     }
 
@@ -144,6 +146,15 @@ public class ControlSessionController {
                 .data(response)
                 .build());
     }
+
+        @GetMapping("/current/context")
+        @Operation(summary = "Get current session context for robot",
+                           description = "Get current active session context (sessionId, userId, factoryId, deviceId) for robot log binding")
+        @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
+        public ResponseEntity<ApiResponse<SessionStatusResponse>> getCurrentSessionContext() {
+                SessionStatusResponse response = controlSessionService.getSessionStatus();
+                return ResponseEntity.ok(ApiResponse.ok("Session context retrieved", response));
+        }
 
     // PATCH /api/control-sessions/current/status  — replaces POST /stop
     @PatchMapping("/current/status")

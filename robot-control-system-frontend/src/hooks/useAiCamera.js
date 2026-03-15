@@ -134,7 +134,11 @@ export function useAiCamera() {
   const consecutiveSendErrorsRef = useRef(0);
   const sendErrorShownRef = useRef(false);
 
+  const consecutiveWsSendErrorsRef = useRef(0);
+
   const wsServiceRef = useRef(null);
+
+  const lastAiAnglesConsoleLogRef = useRef(0);
 
   function stopLocal() {
     runningRef.current = false;
@@ -180,6 +184,7 @@ export function useAiCamera() {
     if (wsServiceRef.current) return wsServiceRef.current;
 
     const wsUrl = buildWsUrl("/ws/robot-control");
+    console.info("[AI Camera] WS URL:", wsUrl);
     const svc = new WebsocketService(wsUrl, {
       reconnect: { enabled: true },
     });
@@ -188,9 +193,11 @@ export function useAiCamera() {
       onStatus: (connected) => {
         wsConnectedRef.current = connected;
         setWsConnected(connected);
+        console.info("[AI Camera] WS status:", connected ? "connected" : "disconnected");
       },
-      onError: () => {
+      onError: (err) => {
         // keep UI minimal; status indicator is enough
+        console.warn("[AI Camera] WS error:", err);
       },
       onMessage: (msg) => {
         if (msg && typeof msg === "object") {
@@ -318,7 +325,20 @@ export function useAiCamera() {
         if (now - lastSendRef.current >= sendIntervalMs) {
           lastSendRef.current = now;
           const svc = wsServiceRef.current;
-          svc?.sendJson({ type: "ai_angles", angles: next.map((n) => Number(n)) });
+          const payload = { type: "ai_angles", angles: next.map((n) => Number(n)) };
+          const ok = svc?.sendJson(payload);
+          if (!ok) {
+            consecutiveWsSendErrorsRef.current += 1;
+          } else {
+            consecutiveWsSendErrorsRef.current = 0;
+          }
+
+          // Throttled diagnostics (once/sec)
+          if (now - lastAiAnglesConsoleLogRef.current >= 1000) {
+            lastAiAnglesConsoleLogRef.current = now;
+            console.debug("[AI Camera] sent ai_angles:", payload);
+          }
+
           setAngles(next);
         }
       }
@@ -393,6 +413,8 @@ export function useAiCamera() {
 
     consecutiveSendErrorsRef.current = 0;
     sendErrorShownRef.current = false;
+
+    consecutiveWsSendErrorsRef.current = 0;
 
     runningRef.current = true;
     isSendingAnglesRef.current = true;

@@ -25,6 +25,9 @@ public class ControlSession {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "factory_id")
+    private Long factoryId;
+
     @Column(name = "device_id", nullable = false)
     private Long deviceId;
 
