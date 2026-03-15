@@ -10,6 +10,8 @@ function StatusPill({ status }) {
 }
 
 export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
+  const showActions = typeof onEdit === "function" || typeof onDelete === "function";
+
   if (loading) return <div className="px-5 py-10 text-center text-white/50 text-sm">Loading devices...</div>;
   if (!devices || devices.length === 0) return <div className="px-5 py-10 text-center text-white/50 text-sm">No devices found.</div>;
 
@@ -25,7 +27,7 @@ export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
             <th className="text-left font-medium px-5 py-3">Connection</th>
             <th className="text-left font-medium px-5 py-3">Hub</th>
             <th className="text-left font-medium px-5 py-3">Status</th>
-            <th className="text-left font-medium px-5 py-3">Actions</th>
+            {showActions && <th className="text-left font-medium px-5 py-3">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
@@ -41,12 +43,18 @@ export default function DeviceTable({ devices, loading, onEdit, onDelete }) {
               <td className="px-5 py-4 text-white/70 text-left align-top">{d.connectionType || "—"}</td>
               <td className="px-5 py-4 text-white/70 text-left align-top">{d.hubName || `Hub #${d.hubId}`}</td>
               <td className="px-5 py-4 text-left align-top"><StatusPill status={d.deviceStatus} /></td>
-              <td className="px-5 py-4 text-left align-top">
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
-                  <button type="button" onClick={() => onDelete(d)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
-                </div>
-              </td>
+              {showActions && (
+                <td className="px-5 py-4 text-left align-top">
+                  <div className="flex items-center gap-2">
+                    {typeof onEdit === "function" && (
+                      <button type="button" onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
+                    )}
+                    {typeof onDelete === "function" && (
+                      <button type="button" onClick={() => onDelete(d)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

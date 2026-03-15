@@ -4,8 +4,11 @@ import CreateAreaModal from "../../../components/areas/CreateAreaModal";
 import EditAreaModal from "../../../components/areas/EditAreaModal";
 import { getAreasByFactory, createArea, updateArea, deleteArea } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function AreasPage() {
+  const canManage = isAdminRole(getRole());
+
   const [areas, setAreas] = useState([]);
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +46,7 @@ export default function AreasPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const canCreate = factories.length > 0;
+  const canCreate = canManage && factories.length > 0;
 
   async function handleCreate(formData) {
     try {
@@ -110,29 +113,33 @@ export default function AreasPage() {
           >
             + Create Area
           </button>
-        ) : (
+        ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
             You must create a factory before creating areas.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <CreateAreaModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={saving}
-        factories={factories}
-      />
+      {canManage && (
+        <>
+          <CreateAreaModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleCreate}
+            loading={saving}
+            factories={factories}
+          />
 
-      <EditAreaModal
-        key={editTarget?.areaId ?? "edit-area"}
-        open={!!editTarget}
-        area={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        loading={saving}
-      />
+          <EditAreaModal
+            key={editTarget?.areaId ?? "edit-area"}
+            open={!!editTarget}
+            area={editTarget}
+            onClose={() => setEditTarget(null)}
+            onSubmit={handleEdit}
+            loading={saving}
+          />
+        </>
+      )}
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
@@ -143,8 +150,8 @@ export default function AreasPage() {
         <AreaTable
           areas={areas}
           loading={loading}
-          onEdit={(a) => setEditTarget(a)}
-          onDelete={handleDelete}
+          onEdit={canManage ? (a) => setEditTarget(a) : undefined}
+          onDelete={canManage ? handleDelete : undefined}
         />
       </div>
     </div>

@@ -23,5 +23,7 @@ public class RegisterRequest {
     @Size(max = 150, message = "Full name must not exceed 150 characters")
     private String fullName;
 
+    private Long factoryId;
+
     private UserRole role = UserRole.VIEWER;
 }
