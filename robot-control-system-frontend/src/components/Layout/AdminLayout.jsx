@@ -47,7 +47,7 @@ function AdminLayout() {
               onSetting={() => navigate("/admin/settings")}
               onLogout={() => {
                 authApi.logout();
-                navigate("/");
+                navigate("/", { replace: true });
               }}
             />
           </div>

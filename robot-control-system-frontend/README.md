@@ -1,8 +1,11 @@
 # Robot Control System Frontend (Web)
 
-Frontend web để quản trị hệ thống Robot Arm: đăng nhập, vào khu vực Admin và CRUD các thực thể (Factory/Area/Hub/Device).
+Đây là web frontend dùng để **quản trị** và **vận hành** hệ thống Robot Arm:
 
-Tài liệu này mô tả **những gì FE hiện tại đã làm được** (dựa trên code trong repo), và **những phần chưa được wiring/đang stub**.
+- ADMIN: quản lý cấu trúc nhà máy (Factory/Area/Hub), thiết bị (Device) và người dùng (Users).
+- OPERATOR: chọn thiết bị và điều khiển Robot Arm bằng **AI Camera** (webcam + MediaPipe Hands), đồng thời ghi nhận log phiên điều khiển.
+
+Repo tổng (RobotArmControl) có nhiều module (backend Java, Flutter app, Python AI…), còn tài liệu này tập trung vào **web frontend** trong thư mục `robot-control-system-frontend/`.
 
 ---
 
@@ -11,213 +14,159 @@ Tài liệu này mô tả **những gì FE hiện tại đã làm được** (d�
 - React 19 + React Router DOM 7
 - Vite 7
 - TailwindCSS 3
-- Axios (có interceptor tự gắn JWT)
-- Ant Design (hiện chỉ thấy dùng ở trang Settings stub)
+- Axios (interceptor tự gắn JWT)
+- MediaPipe Hands (`@mediapipe/hands`) cho AI Camera
 
 ---
 
-## Routes & màn hình hiện có
+## Mục tiêu & hành vi chính
 
-Routing nằm ở `src/App.jsx`.
+### 1) Đăng nhập / xác thực
 
-### Public
-
-- `/` — Home page
-	- Header + nút Login.
-	- Banner giới thiệu.
-	- Mở `LoginModal` để đăng nhập.
-
-### Admin (có bảo vệ)
-
-- `/admin/*` — Khu vực Admin (điều kiện: có `token` trong `localStorage`).
-- `/admin/dashboard` — Dashboard (dữ liệu mock/hardcode).
-- `/admin/factories` — CRUD Factories.
-- `/admin/areas` — CRUD Areas.
-- `/admin/hubs` — CRUD Hubs.
-- `/admin/devices` — CRUD Devices.
-
-Sidebar điều hướng nằm ở `src/components/Layout/SidebarAdmin.jsx`.
-
----
-
-## Luồng đăng nhập (Auth)
+- Người dùng đăng nhập bằng `LoginModal` trên trang `/`.
+- Khi login thành công, FE lưu các giá trị vào `localStorage`:
+	- `token` (JWT access token)
+	- `role` (ví dụ: `ADMIN`, `OPERATOR`, `VIEWER`)
+	- `username`
+	- `email` (nếu backend trả về `authData.email`)
+	- `factoryId` (nếu backend trả về)
+- Điều hướng sau login dùng `navigate(..., { replace: true })` để tránh bấm Back quay lại màn hình login.
+- Logout xóa các key trên và điều hướng về `/`.
 
 Code liên quan:
 
 - UI: `src/components/login/LoginModal.jsx`
 - API: `src/api/authApi.js`
-- Axios client: `src/api/axiosClient.js`
+- Routing bảo vệ: `src/App.jsx` (`PublicRoute`, `ProtectedRoute`, `RoleProtectedRoute`)
 
-Hiện tại FE làm các việc sau:
+### 2) Khu vực Admin: CRUD dữ liệu hệ thống
 
-1. Gọi `POST /api/auth/login` với `{ username, password }`.
-2. Lấy `response.data.data` và lưu vào `localStorage`:
-	 - `token` = `accessToken`
-	 - `role`
-	 - `username`
-3. Redirect bằng `window.location.href = "/admin/dashboard"`.
-4. `ProtectedRoute` chỉ kiểm tra **có/không có** `token` để cho phép vào `/admin/*`.
+Các trang CRUD (ADMIN có quyền quản trị; OPERATOR/VIEWER phụ thuộc backend trả về & UI bảo vệ route):
 
-Chưa có/đang stub:
+- Factories: tạo/sửa/xóa/list
+- Areas: tạo/sửa/xóa/list theo Factory
+- Hubs: tạo/sửa/xóa/list theo Area
+- Devices: tạo/sửa/xóa/list theo Hub
+- Users: chỉ ADMIN truy cập
 
-- Chưa có phân quyền theo role ở FE (ADMIN/OPERATOR/VIEWER… chưa được check phía client).
-- Có skeleton refresh-token trong `axiosClient` (queue + `_retry`) nhưng:
-	- `authApi.login` **không lưu** `refreshToken`.
-	- endpoint refresh đang gọi `POST /auth/refresh` (không có tiền tố `/api`) và kỳ vọng `res.data.token`.
-	- Vì vậy tính năng refresh token **chưa được wiring hoàn chỉnh**.
-- Chưa có flow logout trên UI (hàm `authApi.logout()` có tồn tại nhưng `onLogout` trong layout đang để trống).
+Các trang tương ứng:
 
----
+- `src/pages/admin/factories/FactoriesPage.jsx`
+- `src/pages/admin/areas/AreasPage.jsx`
+- `src/pages/admin/hubs/HubsPage.jsx`
+- `src/pages/admin/devices/DevicesPage.jsx`
+- `src/pages/admin/users/UsersPage.jsx` (ADMIN-only)
 
-## Tích hợp Backend API (CRUD)
+### 3) OPERATOR: chọn Device → điều khiển bằng AI Camera
 
-Trong dev mode, FE gọi API bằng path tương đối (`/api/...`) và được Vite proxy sang backend:
+Luồng thao tác điển hình:
 
-- Proxy `/api` -> `https://robot-control-system-rmbw.onrender.com`
-- Proxy WebSocket `/ws` -> `wss://robot-control-system-rmbw.onrender.com`
+1. Vào `/admin/devices`, chọn Hub rồi click vào 1 device.
+2. FE lưu device đã chọn vào `sessionStorage["robotSession.deviceId"]`.
+3. Với OPERATOR, sau khi chọn device sẽ điều hướng sang `/admin/ai-camera`.
+4. Trên AI Camera page:
+	 - Start Session: mở control session trên backend (device-aware)
+	 - Start AI Camera: mở webcam + chạy MediaPipe Hands và bắt đầu gửi góc khớp
+	 - Stop AI Camera: dừng webcam/sending
+	 - End Session: kết thúc session, đồng thời ingest 1 log và lưu “telemetry snapshot” vào sessionStorage để hiển thị ở Logs
 
-Thiết lập proxy: `vite.config.js`.
+Code liên quan:
 
-### 1) Factories
+- Trang điều khiển: `src/pages/admin/aicamera/AiCameraPage.jsx`
+- Hook điều khiển: `src/hooks/useAiCamera.js`
+- API session/angles: `src/api/cameraService.js`
+- WebSocket helper: `src/services/websocketService.js`
 
-UI:
+### 4) Logs (Operator)
 
-- Page: `src/pages/admin/factories/FactoriesPage.jsx`
-- Table: `src/components/factories/FactoryTable.jsx`
-- Modals: `CreateFactoryModal.jsx`, `EditFactoryModal.jsx`
+- Với role OPERATOR, route `/admin/dashboard` hiển thị như trang **Logs**.
+- Sau khi end session, FE lưu:
+	- `sessionStorage["robotLogs.lastSessionId"]` để biết sessionId cần query log
+	- `sessionStorage["robotTelemetry.last"]` để hiển thị bảng “TELEMETRY Details”
+- Trang Logs gọi backend để lấy log theo sessionId và **lọc bỏ TELEMETRY spam** (chỉ giữ các loại log có ý nghĩa như `AUDIT`, `COMMAND`, `AI_GESTURE`).
 
-Chức năng:
+Code liên quan:
 
-- Load danh sách factories.
-- Tạo factory (modal).
-- Sửa factory (modal).
-- Xoá factory (confirm).
-
-Fields chính trên UI/payload:
-
-- `factoryName`, `location`, `factoryStatus` (status hiển thị Active/Inactive).
-
-API được gọi (xem `src/api/factoryService.js`):
-
-- `GET /api/factories`
-- `GET /api/factories/{factoryId}`
-- `POST /api/factories`
-- `PUT /api/factories/{factoryId}`
-- `DELETE /api/factories/{factoryId}`
-
-### 2) Areas
-
-UI:
-
-- Page: `src/pages/admin/areas/AreasPage.jsx`
-- Table: `src/components/areas/AreaTable.jsx`
-- Modals: `CreateAreaModal.jsx`, `EditAreaModal.jsx`
-
-Chức năng:
-
-- Load factories, sau đó load areas theo từng factory.
-- Tạo area (bắt buộc chọn factory).
-- Sửa area.
-- Xoá area.
-
-Fields chính:
-
-- `areaName`, `areaDescription`, `factoryId`.
-
-API được gọi (xem `src/api/areaService.js`):
-
-- `GET /api/factories/{factoryId}/areas` (có hỗ trợ query `search`, `status` ở service, nhưng UI hiện chưa có filter/search)
-- `POST /api/factories/{factoryId}/areas`
-- `PUT /api/areas/{areaId}`
-- `DELETE /api/areas/{areaId}`
-- `PATCH /api/areas/{areaId}/status` (đã có trong service, UI chưa gọi)
-
-### 3) Hubs
-
-UI:
-
-- Page: `src/pages/admin/hubs/HubsPage.jsx`
-- Table: `src/components/hubs/HubTable.jsx`
-- Modals: `CreateHubModal.jsx`, `EditHubModal.jsx`
-
-Chức năng:
-
-- Load factories -> areas -> hubs (theo từng area).
-- Tạo hub (bắt buộc chọn area).
-- Sửa hub.
-- Xoá hub.
-
-Fields chính (theo modal):
-
-- `hubName`, `hubDescription`, `areaId`, `status`.
-
-API được gọi (xem `src/api/hubService.js`):
-
-- `GET /api/areas/{areaId}/hubs` (service có hỗ trợ query `search`, `status` nhưng UI chưa có)
-- `POST /api/areas/{areaId}/hubs`
-- `PUT /api/hubs/{hubId}`
-- `DELETE /api/hubs/{hubId}`
-- `PATCH /api/hubs/{hubId}/status` (đã có trong service, UI chưa gọi)
-
-### 4) Devices
-
-UI:
-
-- Page: `src/pages/admin/devices/DevicesPage.jsx`
-- Table: `src/components/devices/DeviceTable.jsx`
-- Modals: `CreateDeviceModal.jsx`, `EditDeviceModal.jsx`
-
-Chức năng:
-
-- Load factories -> areas -> hubs -> devices (theo từng hub).
-- Tạo device (bắt buộc chọn hub).
-- Sửa device.
-- Xoá device.
-
-Fields chính (theo modal):
-
-- `deviceName`, `hubId`, `deviceType` (mặc định RobotArm), `robotType` (Unity/Real), `model`, `serialNumber`, `connectionType` (USB/Serial/TCP).
-
-API được gọi (xem `src/api/deviceService.js`):
-
-- `GET /api/hubs/{hubId}/devices` (service có hỗ trợ query `search`, `status` nhưng UI chưa có)
-- `POST /api/hubs/{hubId}/devices`
-- `PUT /api/devices/{deviceId}`
-- `DELETE /api/devices/{deviceId}`
-- `PATCH /api/devices/{deviceId}/status` (đã có trong service, UI chưa gọi)
+- Logs page: `src/pages/admin/dashboard/DashboardPage.jsx`
+- Log API: `src/api/logService.js`
 
 ---
 
-## Dashboard
+## Routes hiện có
 
-`/admin/dashboard` hiện là UI overview với **số liệu & activity logs hardcode** trong `src/pages/admin/dashboard/DashboardPage.jsx`.
+Routing nằm ở `src/App.jsx`.
 
----
+### Public
 
-## WebSocket / AI Camera
+- `/` — Home page + mở `LoginModal` để đăng nhập
 
-- Vite đã cấu hình proxy cho `/ws` (WebSocket) nhưng FE **chưa có code kết nối WS** trong `src/`.
-- Chưa có màn hình/section “AI Camera Control” và chưa implement `getUserMedia`/MediaPipe hay gửi message `ai_angles`.
+### Admin (bảo vệ bằng token)
 
----
-
-## Các file/trang có tồn tại nhưng chưa được wiring vào router
-
-- `src/pages/admin/control/ControlPage.jsx` — hiện là mock table factories, chưa được route trong `src/App.jsx`.
-- `src/pages/admin/settings/SettingsPage.jsx` — trang stub “Chưa có chức năng”, chưa được route.
-
----
-
-## Cấu trúc thư mục chính
-
-- `src/api/` — axios client + các service gọi backend.
-- `src/pages/` — các page theo route.
-- `src/components/` — layout + tables + modals.
-- `src/assets/` — ảnh banner (Home page đang dùng `robot-banner.jpg`).
+- `/admin` — Layout admin (có sidebar + header)
+- `/admin/dashboard`
+	- ADMIN: Dashboard tổng quan (hiện có phần số liệu demo)
+	- OPERATOR: Logs + TELEMETRY Details (đọc từ sessionStorage + backend logs)
+- `/admin/factories` — CRUD Factories
+- `/admin/areas` — CRUD Areas
+- `/admin/hubs` — CRUD Hubs
+- `/admin/devices` — CRUD Devices + chọn device cho phiên điều khiển
+- `/admin/users` — Users (ADMIN-only)
+- `/admin/ai-camera` — AI Camera Control (OPERATOR-only)
+- `/admin/settings` — Settings (ADMIN-only, hiện là trang stub)
 
 ---
 
-## Cách chạy (dev)
+## Backend API tích hợp (tổng quan)
+
+Trong dev mode, FE gọi API bằng path tương đối (`/api/...`) và Vite proxy sang backend (xem `vite.config.js`).
+
+### Auth
+
+- `POST /api/auth/login`
+
+### CRUD
+
+- Factories: `/api/factories...`
+- Areas: `/api/factories/{factoryId}/areas`, `/api/areas/{areaId}...`
+- Hubs: `/api/areas/{areaId}/hubs`, `/api/hubs/{hubId}...`
+- Devices: `/api/hubs/{hubId}/devices`, `/api/devices/{deviceId}...`
+
+### Control session / AI Camera
+
+- `POST /api/control-sessions` (start session, có thể kèm `deviceId`)
+- `GET /api/control-sessions/current` (status)
+- `PATCH /api/control-sessions/current/status` (stop session)
+- `POST /api/camera/angles` (gửi angles + deviceId)
+
+### Logs
+
+- `POST /api/logs/ingest` (ingest 1 log entry)
+- `GET /api/logs/sessions/{sessionId}?limit=...` (query logs theo session)
+
+---
+
+## WebSocket
+
+- FE có `WebsocketService` + `buildWsUrl()` trong `src/services/websocketService.js`.
+- Default WS path: `/ws/robot-control` (có thể override qua env).
+
+---
+
+## Storage keys (FE)
+
+### localStorage
+
+- `token`, `role`, `username`, `email`, `factoryId`
+
+### sessionStorage
+
+- `robotSession.deviceId` — device được chọn để điều khiển
+- `robotLogs.lastSessionId` — sessionId mới nhất để trang Logs query
+- `robotTelemetry.last` — snapshot hiển thị panel TELEMETRY Details
+
+---
+
+## Cách chạy
 
 Yêu cầu: Node.js + npm.
 
@@ -227,12 +176,31 @@ npm install
 npm run dev
 ```
 
-Mặc định Vite chạy ở `http://localhost:5173`.
+Build production:
+
+```bash
+cd robot-control-system-frontend
+npm run build
+```
+
+Ghi chú Windows/PowerShell: nếu bị chặn `npm.ps1` (execution policy), chạy build bằng `cmd`:
+
+```bat
+cmd /c "cd /d <path>\robot-control-system-frontend & npm run build"
+```
 
 ---
 
-## Ghi chú kỹ thuật / hạn chế hiện tại
+## Cấu hình env (tuỳ chọn)
 
-- `axiosClient` có `baseURL: ""` nên phụ thuộc proxy của Vite trong dev; khi deploy production cần cấu hình base URL/proxy phù hợp.
-- Các trang Areas/Hubs/Devices đang load dữ liệu theo kiểu lặp qua parent list (Factories -> Areas -> Hubs -> Devices), có thể tạo nhiều request (N+1) nếu dữ liệu lớn.
-- Có một vài chỗ UI/label chưa khớp 100% (ví dụ cột trong `HubTable`), nhưng logic CRUD vẫn theo service.
+- `VITE_WS_URL`: set full WebSocket URL (override tất cả)
+- `VITE_WS_BASE_URL`: set base url cho WS (kèm path)
+- `VITE_AI_CAMERA_SELFIE_MODE`: `1` (default) để mirror như selfie, `0` để tắt
+
+---
+
+## Ghi chú kỹ thuật / hạn chế
+
+- `axiosClient` đang có skeleton refresh-token nhưng wiring chưa hoàn chỉnh (chỉ hoạt động nếu có `refreshToken` trong localStorage và endpoint `/auth/refresh` đúng như kỳ vọng).
+- Một số trang Admin dashboard (ADMIN) còn demo/hardcode số liệu.
+- Các trang load dữ liệu theo kiểu duyệt cây (Factories → Areas → Hubs → Devices) có thể tạo nhiều request khi dữ liệu lớn.
