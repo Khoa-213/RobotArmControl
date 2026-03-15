@@ -6,6 +6,7 @@ import {
   ApartmentOutlined,
   ClusterOutlined,
   RobotOutlined,
+  UserOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
 import { getRole, isAdminRole, isOperatorRole } from "../../utils/auth";
@@ -25,6 +26,7 @@ function SidebarAdmin({ collapsed }) {
         { key: "/admin/areas", label: "Areas", icon: <ApartmentOutlined /> },
         { key: "/admin/hubs", label: "Hubs", icon: <ClusterOutlined /> },
         { key: "/admin/devices", label: "Devices", icon: <RobotOutlined /> },
+        { key: "/admin/users", label: "Users", icon: <UserOutlined /> },
       ]
     : isOperator
       ? [

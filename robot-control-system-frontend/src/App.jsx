@@ -6,6 +6,7 @@ import FactoriesPage from "./pages/admin/factories/FactoriesPage";
 import AreasPage from "./pages/admin/areas/AreasPage";
 import HubsPage from "./pages/admin/hubs/HubsPage";
 import DevicesPage from "./pages/admin/devices/DevicesPage";
+import UsersPage from "./pages/admin/users/UsersPage";
 import AiCameraPage from "./pages/admin/aicamera/AiCameraPage";
 import SettingsPage from "./pages/admin/settings/SettingsPage";
 import HomePage from "./pages/homepage/HomePage";
@@ -51,6 +52,14 @@ function App() {
           <Route path="areas" element={<AreasPage />} />
           <Route path="hubs" element={<HubsPage />} />
           <Route path="devices" element={<DevicesPage />} />
+          <Route
+            path="users"
+            element={
+              <RoleProtectedRoute allow={["ADMIN"]}>
+                <UsersPage />
+              </RoleProtectedRoute>
+            }
+          />
           <Route
             path="ai-camera"
             element={
