@@ -1,117 +1,128 @@
 package com.example.robotcontrolsystembackend.config.websocket;
 
+
+import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class RobotControlWebSocketHandler extends TextWebSocketHandler implements RobotSessionSender {
+public class RobotControlWebSocketHandler extends TextWebSocketHandler {
 
-    private final ObjectMapper objectMapper;
 
-    // all sessions (for legacy broadcast)
-    private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    // deviceId -> session
-    private final ConcurrentHashMap<String, WebSocketSession> deviceSessions = new ConcurrentHashMap<>();
-    // sessionId -> deviceId
-    private final ConcurrentHashMap<String, String> sessionToDevice = new ConcurrentHashMap<>();
+    private static final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+
+    private static final String ATTR_LAST_AI_ANGLES_LOG_MS = "lastAiAnglesLogMs";
+    private static final long AI_ANGLES_LOG_INTERVAL_MS = 1000;
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        sessions.put(session.getId(), session);
-        log.info("Client connected: {} | Total: {}", session.getId(), sessions.size());
+        sessions.add(session);
+        Object username = session.getAttributes().get("username");
+        Object authenticated = session.getAttributes().get("authenticated");
+        log.info(
+                "WS client connected: id={} user={} auth={} totalClients={}",
+                session.getId(),
+                username != null ? username : "?",
+                authenticated != null ? authenticated : "?",
+                sessions.size()
+        );
     }
+
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        log.debug("Received from {}: {}", session.getId(), payload);
 
+
+        String type = null;
+        Integer anglesLen = null;
         try {
-            JsonNode root = objectMapper.readTree(payload);
-            String type = root.path("type").asText("");
-
-            if ("register".equals(type)) {
-                String deviceId = root.path("deviceId").asText("");
-                if (!deviceId.isEmpty()) {
-                    deviceSessions.put(deviceId, session);
-                    sessionToDevice.put(session.getId(), deviceId);
-                    log.info("Registered deviceId={} for session={}", deviceId, session.getId());
-                    // optional: send ack
-                    session.sendMessage(new TextMessage("{\"type\":\"register_ack\",\"deviceId\":\"" + deviceId + "\"}"));
-                }
-                return;
+            JsonNode root = OBJECT_MAPPER.readTree(payload);
+            JsonNode typeNode = root.get("type");
+            if (typeNode != null && typeNode.isTextual()) {
+                type = typeNode.asText();
             }
-
-            // If message includes target deviceId -> route to that device only
-            String targetDevice = root.path("deviceId").asText("");
-            if (!targetDevice.isEmpty()) {
-                WebSocketSession targetSession = deviceSessions.get(targetDevice);
-                if (targetSession != null && targetSession.isOpen()) {
-                    targetSession.sendMessage(new TextMessage(payload));
-                    log.debug("Routed message to device {} (session {})", targetDevice, targetSession.getId());
-                    return;
-                } else {
-                    log.warn("Target device {} not connected; ignoring message", targetDevice);
-                    return;
+            if ("ai_angles".equals(type)) {
+                JsonNode anglesNode = root.get("angles");
+                if (anglesNode != null && anglesNode.isArray()) {
+                    anglesLen = anglesNode.size();
                 }
             }
+        } catch (Exception ignored) {
+            // Not JSON; ignore
+        }
 
-            // Fallback: broadcast to all (legacy behaviour)
-            broadcastMessage(payload);
-        } catch (IOException e) {
-            log.error("Failed parse/route WS message: {}", e.getMessage());
+
+        if ("ai_angles".equals(type)) {
+            long now = System.currentTimeMillis();
+            Object lastObj = session.getAttributes().get(ATTR_LAST_AI_ANGLES_LOG_MS);
+            long last = (lastObj instanceof Number) ? ((Number) lastObj).longValue() : 0L;
+            if (now - last >= AI_ANGLES_LOG_INTERVAL_MS) {
+                session.getAttributes().put(ATTR_LAST_AI_ANGLES_LOG_MS, now);
+                log.info(
+                        "WS recv ai_angles: fromId={} clients={} anglesLen={}",
+                        session.getId(),
+                        sessions.size(),
+                        anglesLen
+                );
+            }
+        } else {
+            log.debug("WS recv: fromId={} payload={}", session.getId(), payload);
+        }
+
+
+        // Broadcast to all clients (Unity, Frontend, etc.)
+        for (WebSocketSession s : sessions) {
+            if (s.isOpen()) {
+                s.sendMessage(message);
+            }
         }
     }
+
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessions.remove(session.getId());
-        String device = sessionToDevice.remove(session.getId());
-        if (device != null) {
-            deviceSessions.remove(device);
-            log.info("Device {} disconnected (session {})", device, session.getId());
-        }
+        sessions.remove(session);
         log.info("Client disconnected: {} | Remaining: {}", session.getId(), sessions.size());
     }
 
+
+    /**
+     * Broadcast a message to all connected clients
+     * Used by ControlSessionService to send camera control commands
+     */
     public void broadcastMessage(String message) {
         TextMessage textMessage = new TextMessage(message);
-        sessions.values().forEach(s -> {
-            if (s != null && s.isOpen()) {
+        for (WebSocketSession s : sessions) {
+            if (s.isOpen()) {
                 try {
                     s.sendMessage(textMessage);
                 } catch (IOException e) {
                     log.error("Failed to send message to session {}: {}", s.getId(), e.getMessage());
                 }
             }
-        });
+        }
         log.info("Broadcast message to {} clients: {}", sessions.size(), message);
     }
 
-    public boolean sendToDevice(String deviceId, String message) {
-        WebSocketSession s = deviceSessions.get(deviceId);
-        if (s != null && s.isOpen()) {
-            try {
-                s.sendMessage(new TextMessage(message));
-                return true;
-            } catch (IOException e) {
-                log.error("Failed to send to device {}: {}", deviceId, e.getMessage());
-            }
-        }
-        return false;
-    }
 
+    /**
+     * Get the number of connected clients
+     */
     public int getConnectedClientsCount() {
         return sessions.size();
     }
 }
+

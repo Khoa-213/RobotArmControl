@@ -11,6 +11,8 @@ import threading
 import numpy as np
 
 # ============ CONFIGURATION ============
+# API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "https://robot-control-system-rmbw.onrender.com")
+# WS_URL = os.getenv("ROBOT_WS_URL", "wss://robot-control-system-rmbw.onrender.com/ws/robot-control")
 API_BASE_URL = os.getenv("ROBOT_API_BASE_URL", "http://localhost:8080")
 WS_URL = os.getenv("ROBOT_WS_URL", "ws://localhost:8080/ws/robot-control")
 SESSION_API_PATH = os.getenv("SESSION_API_PATH", f"{API_BASE_URL}/api/control-sessions/current")
