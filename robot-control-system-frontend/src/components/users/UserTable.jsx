@@ -38,8 +38,10 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
       <table className="w-full">
         <thead>
           <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-white/50">
+            <th className="px-5 py-3 font-medium">ID</th>
             <th className="px-5 py-3 font-medium">Username</th>
             <th className="px-5 py-3 font-medium">Email</th>
+            <th className="px-5 py-3 font-medium">Role</th>
             <th className="px-5 py-3 font-medium">Factory</th>
             <th className="px-5 py-3 font-medium">Status</th>
             <th className="px-5 py-3 font-medium">Created</th>
@@ -53,6 +55,11 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
               className="border-b border-white/5 hover:bg-white/5 transition"
             >
               <td className="px-5 py-4">
+                <div className="text-sm text-white/50 font-mono">
+                  {user.userId}
+                </div>
+              </td>
+              <td className="px-5 py-4">
                 <div className="text-sm text-white font-medium">
                   {user.username}
                 </div>
@@ -61,6 +68,11 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
                 <div className="text-sm text-white/60">
                   {user.email}
                 </div>
+              </td>
+              <td className="px-5 py-4">
+                <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-300">
+                  {user.role || "Unknown"}
+                </span>
               </td>
               <td className="px-5 py-4">
                 <div className="text-sm text-white/60">
