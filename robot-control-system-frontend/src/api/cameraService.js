@@ -2,18 +2,22 @@ import axiosClient from "./axiosClient";
 
 export const cameraService = {
   start: async (deviceId) => {
-    const config = deviceId != null ? { params: { deviceId } } : undefined;
-    const response = await axiosClient.post("/api/camera/start", null, config);
+    const body = { controlMode: "CAMERA" };
+    if (deviceId != null) body.deviceId = deviceId;
+
+    // Use the device-aware endpoint.
+    const response = await axiosClient.post("/api/control-sessions", body);
     return response.data?.data;
   },
 
   stop: async () => {
-    const response = await axiosClient.post("/api/camera/stop");
+    // Stop current session.
+    const response = await axiosClient.patch("/api/control-sessions/current/status");
     return response.data?.data;
   },
 
   status: async () => {
-    const response = await axiosClient.get("/api/camera/status");
+    const response = await axiosClient.get("/api/control-sessions/current");
     return response.data?.data;
   },
 

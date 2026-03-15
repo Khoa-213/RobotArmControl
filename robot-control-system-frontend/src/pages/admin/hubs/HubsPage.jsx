@@ -7,10 +7,12 @@ import EditHubModal from "../../../components/hubs/EditHubModal";
 import { getHubsByArea, createHub, updateHub, deleteHub } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
-import { getRole, isAdminRole } from "../../../utils/auth";
+import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
 export default function HubsPage() {
   const canManage = isAdminRole(getRole());
+  const isOperator = isOperatorRole(getRole());
+  const operatorFactoryId = getFactoryId();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedAreaIdRaw = searchParams.get("areaId");
@@ -29,6 +31,19 @@ export default function HubsPage() {
     try {
       setLoading(true);
       setError("");
+      if (isOperator) {
+        if (!operatorFactoryId) {
+          setAreas([]);
+          setError("No factory is assigned to this operator.");
+          return;
+        }
+
+        const areasData = await getAreasByFactory(operatorFactoryId);
+        const list = Array.isArray(areasData) ? areasData : [];
+        setAreas(list);
+        return;
+      }
+
       const factoriesData = await getFactories();
       const factoryList = Array.isArray(factoriesData) ? factoriesData : [];
 
@@ -46,6 +61,7 @@ export default function HubsPage() {
           /* skip */
         }
       }
+
       setAreas(allAreas);
     } catch (e) {
       setError(e?.message || "Failed to load areas");

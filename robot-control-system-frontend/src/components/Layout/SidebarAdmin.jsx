@@ -49,12 +49,17 @@ function SidebarAdmin({ collapsed }) {
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
+  const username = String(localStorage.getItem("username") || "").trim();
+  const displayName = username || "User";
+  const avatarText = displayName ? displayName.slice(0, 1).toUpperCase() : "U";
+
   return (
     <aside
       className={[
         "fixed left-0 top-0 z-50 h-screen",
         "bg-neutral-950 text-white",
         "border-r border-white/10",
+        "flex flex-col",
         collapsed ? "w-20" : "w-64",
       ].join(" ")}
     >
@@ -64,7 +69,7 @@ function SidebarAdmin({ collapsed }) {
         </div>
       </div>
 
-      <nav className="p-2">
+      <nav className="p-2 flex-1 overflow-y-auto">
         <ul className="space-y-1">
           {items.map((it) => {
             const active = isActive(it.key);
@@ -95,6 +100,38 @@ function SidebarAdmin({ collapsed }) {
           })}
         </ul>
       </nav>
+
+      <div className={[
+        "p-3 border-t border-white/10",
+        collapsed ? "flex justify-center" : "",
+      ].join(" ")}
+      >
+        <div className={[
+          "flex items-center gap-3",
+          collapsed ? "justify-center" : "",
+        ].join(" ")}
+        >
+          <div
+            className={[
+              "h-9 w-9 rounded-full",
+              "bg-white/10 border border-white/10",
+              "flex items-center justify-center",
+              "text-sm font-semibold",
+              "select-none",
+            ].join(" ")}
+            title={displayName}
+            aria-label={displayName}
+          >
+            {avatarText}
+          </div>
+
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{displayName}</div>
+            </div>
+          )}
+        </div>
+      </div>
     </aside>
   );
 }
