@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
-export default function CreateHubModal({ open, onClose, onSubmit, loading, areas }) {
-  const [form, setForm] = useState({ hubName: "", hubDescription: "" });
+export default function CreateHubModal({ open, onClose, onSubmit, loading, areas, initialAreaId }) {
+  const [form, setForm] = useState({ hubName: "", hubDescription: "", areaId: "", status: "Active" });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialAreaId) return;
+    setForm((p) => (p.areaId ? p : { ...p, areaId: String(initialAreaId) }));
+  }, [open, initialAreaId]);
 
   if (!open) return null;
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import 'main_screen.dart';
 
 class HubDeviceScreen extends StatelessWidget {
@@ -20,7 +21,7 @@ class HubDeviceScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(
               Icons.precision_manufacturing,
-              color: Colors.black,
+              color: AppColors.ink,
             ),
             title: const Text('Robot Arm R-01'),
             subtitle: const Text('Status: Active'),
@@ -28,7 +29,7 @@ class HubDeviceScreen extends StatelessWidget {
               // Navigate directly to MainScreen at the Control tab (index 3).
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
-                  builder: (_) => const MainScreen(initialIndex: 3),
+                  builder: (_) => const MainScreen(initialIndex: 2),
                 ),
                 (route) => false,
               );

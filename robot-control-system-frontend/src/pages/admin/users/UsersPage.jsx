@@ -29,10 +29,8 @@ export default function UsersPage() {
       setLoading(true);
       setError("");
       const data = await getUsers();
-      console.log("Users loaded:", data);
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("Load users error:", e);
       setError(e?.message || "Failed to load users");
     } finally {
       setLoading(false);
@@ -51,8 +49,6 @@ export default function UsersPage() {
       const { factoryId, status, role, ...userCreationData } = formData;
       const created = await createUser(userCreationData);
       
-      console.log("User created:", created);
-      
       // Then update with factory, status, and role assignment
       if (factoryId || status) {
         const updateData = { 
@@ -61,17 +57,12 @@ export default function UsersPage() {
         };
         if (factoryId) updateData.factoryId = factoryId;
         if (status) updateData.status = status;
-        
-        console.log("Updating user with:", updateData);
-        
+
         const updated = await updateUser(created.userId, updateData);
-        console.log("User after update:", updated);
         
         // Use dedicated role endpoint to set role
         if (role) {
-          console.log("Setting role to:", role);
           const withRole = await updateUserRole(created.userId, role);
-          console.log("User after role update:", withRole);
           setUsers((prev) => [withRole, ...prev]);
         } else {
           setUsers((prev) => [updated, ...prev]);
@@ -82,7 +73,6 @@ export default function UsersPage() {
       
       setCreateOpen(false);
     } catch (e) {
-      console.error("Create user error:", e);
       setError(e?.message || "Failed to create user");
     } finally {
       setSaving(false);

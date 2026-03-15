@@ -4,8 +4,8 @@ import 'app_colors.dart';
 import 'app_typography.dart';
 
 class AppTheme {
-  static ThemeData light() {
-    const colorScheme = ColorScheme.light(
+  static ThemeData dark() {
+    const colorScheme = ColorScheme.dark(
       primary: AppColors.ink,
       onPrimary: AppColors.paper,
       surface: AppColors.paper,
@@ -81,14 +81,20 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.ink, width: 1.4),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         hintStyle: const TextStyle(color: AppColors.slate),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.ink,
         unselectedItemColor: AppColors.slate,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
         unselectedLabelStyle: TextStyle(fontSize: 12),
         showUnselectedLabels: true,
       ),
@@ -100,4 +106,6 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData light() => dark();
 }

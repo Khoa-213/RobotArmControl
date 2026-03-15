@@ -3,6 +3,7 @@ import { getFactories } from "../../api/factoryService";
 
 export default function UserTable({ users, loading, onEdit, onDelete }) {
   const [factories, setFactories] = React.useState({});
+  const showActions = typeof onEdit === "function" || typeof onDelete === "function";
 
   React.useEffect(() => {
     loadFactories();
@@ -45,7 +46,7 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
             <th className="px-5 py-3 font-medium">Factory</th>
             <th className="px-5 py-3 font-medium">Status</th>
             <th className="px-5 py-3 font-medium">Created</th>
-            <th className="px-5 py-3 font-medium">Actions</th>
+            {showActions && <th className="px-5 py-3 font-medium">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -80,15 +81,15 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
                 </div>
               </td>
               <td className="px-5 py-4">
-                <span
-                  className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    user.status === "Active"
-                      ? "bg-green-500/20 text-green-300"
-                      : "bg-red-500/20 text-red-300"
-                  }`}
-                >
-                  {user.status || "Unknown"}
-                </span>
+                {(() => {
+                  const s = String(user.status || "").toLowerCase();
+                  const isActive = s === "active";
+                  const cls = isActive ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300";
+                  const label = s ? s.toUpperCase() : "UNKNOWN";
+                  return (
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${cls}`}>{label}</span>
+                  );
+                })()}
               </td>
               <td className="px-5 py-4">
                 <div className="text-sm text-white/60">
@@ -97,26 +98,28 @@ export default function UserTable({ users, loading, onEdit, onDelete }) {
                     : "-"}
                 </div>
               </td>
-              <td className="px-5 py-4">
-                <div className="flex gap-2">
-                  {onEdit && (
-                    <button
-                      onClick={() => onEdit(user)}
-                      className="px-3 py-1 rounded text-xs bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button
-                      onClick={() => onDelete(user)}
-                      className="px-3 py-1 rounded text-xs bg-red-500/20 text-red-300 hover:bg-red-500/30 transition"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </td>
+              {showActions && (
+                <td className="px-5 py-4">
+                  <div className="flex gap-2">
+                    {typeof onEdit === "function" && (
+                      <button
+                        onClick={() => onEdit(user)}
+                        className="px-3 py-1 rounded text-xs bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {typeof onDelete === "function" && (
+                      <button
+                        onClick={() => onDelete(user)}
+                        className="px-3 py-1 rounded text-xs bg-red-500/20 text-red-300 hover:bg-red-500/30 transition"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

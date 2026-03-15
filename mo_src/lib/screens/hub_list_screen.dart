@@ -56,6 +56,7 @@ class _HubListScreenState extends State<HubListScreen> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Hubs • ${widget.area.name}',
+      currentTabIndex: 1,
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -76,9 +77,7 @@ class _HubListScreenState extends State<HubListScreen> {
               title: 'Unable to load hubs',
               message: '${snapshot.error}',
               actionLabel: isAuthError ? 'Sign in' : 'Retry',
-              onAction: isAuthError
-                  ? _openLoginScreenAndReload
-                  : _reloadHubs,
+              onAction: isAuthError ? _openLoginScreenAndReload : _reloadHubs,
             );
           }
 

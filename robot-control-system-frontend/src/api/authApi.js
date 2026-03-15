@@ -23,6 +23,11 @@ export const authApi = {
     localStorage.setItem("token", authData.accessToken);
     localStorage.setItem("role", authData.role);
     localStorage.setItem("username", authData.username);
+    if (authData?.factoryId != null) {
+      localStorage.setItem("factoryId", String(authData.factoryId));
+    } else {
+      localStorage.removeItem("factoryId");
+    }
 
     return authData;
   },
@@ -31,5 +36,6 @@ export const authApi = {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("username");
+    localStorage.removeItem("factoryId");
   },
 };
