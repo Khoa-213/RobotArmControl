@@ -5,8 +5,11 @@ import EditHubModal from "../../../components/hubs/EditHubModal";
 import { getHubsByArea, createHub, updateHub, deleteHub } from "../../../api/hubService";
 import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
+import { getRole, isAdminRole } from "../../../utils/auth";
 
 export default function HubsPage() {
+  const canManage = isAdminRole(getRole());
+
   const [hubs, setHubs] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +55,7 @@ export default function HubsPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const canCreate = areas.length > 0;
+  const canCreate = canManage && areas.length > 0;
 
   const enrichedHubs = hubs.map((h) => {
     const area = areas.find((a) => a.areaId === h.areaId);
@@ -119,30 +122,34 @@ async function handleCreate(formData) {
           >
             + Create Hub
           </button>
-        ) : (
+        ) : canManage ? (
           <div className="h-10 px-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center text-sm text-yellow-300">
             You must create an area before creating hubs.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <CreateHubModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={saving}
-        areas={areas}
-      />
+      {canManage && (
+        <>
+          <CreateHubModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={handleCreate}
+            loading={saving}
+            areas={areas}
+          />
 
-      <EditHubModal
-        key={editTarget?.hubId ?? "edit-hub"}
-        open={!!editTarget}
-        hub={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        loading={saving}
-        areas={areas}
-      />
+          <EditHubModal
+            key={editTarget?.hubId ?? "edit-hub"}
+            open={!!editTarget}
+            hub={editTarget}
+            onClose={() => setEditTarget(null)}
+            onSubmit={handleEdit}
+            loading={saving}
+            areas={areas}
+          />
+        </>
+      )}
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
@@ -153,8 +160,8 @@ async function handleCreate(formData) {
         <HubTable
           hubs={enrichedHubs}
           loading={loading}
-          onEdit={(h) => setEditTarget(h)}
-          onDelete={handleDelete}
+          onEdit={canManage ? (h) => setEditTarget(h) : undefined}
+          onDelete={canManage ? handleDelete : undefined}
         />
       </div>
     </div>

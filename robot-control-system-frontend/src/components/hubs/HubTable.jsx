@@ -14,6 +14,8 @@ function StatusPill({ active }) {
 }
 
 export default function HubTable({ hubs, loading, onEdit, onDelete }) {
+  const showActions = typeof onEdit === "function" || typeof onDelete === "function";
+
   if (loading) {
     return <div className="px-5 py-10 text-center text-white/50 text-sm">Loading hubs...</div>;
   }
@@ -31,7 +33,7 @@ export default function HubTable({ hubs, loading, onEdit, onDelete }) {
             <th className="text-left font-medium px-5 py-3">Area</th>
             <th className="text-left font-medium px-5 py-3">Description</th>
             <th className="text-left font-medium px-5 py-3">Status</th>
-            <th className="text-left font-medium px-5 py-3">Actions</th>
+            {showActions && <th className="text-left font-medium px-5 py-3">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
@@ -46,12 +48,18 @@ export default function HubTable({ hubs, loading, onEdit, onDelete }) {
                 <td className="px-5 py-4 text-white/70 text-left align-top">{h.hubDescription || "No description available"}</td>
                 <td className="px-5 py-4 text-white/70 text-left align-top">{h.areaName || `Area #${h.areaId}`}</td>
                 <td className="px-5 py-4 text-left align-top"><StatusPill active={active} /></td>
-                <td className="px-5 py-4 text-left align-top">
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => onEdit(h)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
-                    <button type="button" onClick={() => onDelete(h)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
-                  </div>
-                </td>
+                {showActions && (
+                  <td className="px-5 py-4 text-left align-top">
+                    <div className="flex items-center gap-2">
+                      {typeof onEdit === "function" && (
+                        <button type="button" onClick={() => onEdit(h)} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition">Edit</button>
+                      )}
+                      {typeof onDelete === "function" && (
+                        <button type="button" onClick={() => onDelete(h)} className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs transition">Delete</button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

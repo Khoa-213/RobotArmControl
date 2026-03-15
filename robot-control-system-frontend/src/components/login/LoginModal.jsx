@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { authApi } from "../../api/authApi";
+import { getDefaultAdminPath } from "../../utils/auth";
 
 function LoginModal({ isOpen, onClose }) {
   const [username, setUsername] = useState("");
@@ -19,7 +20,7 @@ function LoginModal({ isOpen, onClose }) {
 
       console.log("LOGIN SUCCESS:", authData);
 
-      window.location.href = "/admin/dashboard";
+      window.location.href = getDefaultAdminPath(authData?.role);
     } catch (error) {
       console.error("Login failed:", error);
       alert("Login failed");

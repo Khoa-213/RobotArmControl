@@ -1,4 +1,5 @@
 import React from "react";
+import { getRole, isOperatorRole } from "../../../utils/auth";
 
 function StatusBadge({ status }) {
   const s = String(status || "").toLowerCase();
@@ -22,6 +23,8 @@ function StatusBadge({ status }) {
 }
 
 export default function DashboardPage() {
+  const isOperator = isOperatorRole(getRole());
+
   const stats = [
     { label: "Factories", value: 5 },
     { label: "Areas", value: 12 },
@@ -56,27 +59,29 @@ export default function DashboardPage() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-white text-left align-top">Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-white text-left align-top">{isOperator ? "Logs" : "Dashboard"}</h1>
         <p className="mt-1 text-sm text-white/60 text-left align-top">
-          Overview of your RoboArm system
+          {isOperator ? "Recent activity and system logs" : "Overview of your RoboArm system"}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5"
-          >
-            <div className="text-xs uppercase tracking-wider text-white/50">
-              {s.label}
+      {!isOperator && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-white/10 bg-neutral-950/40 p-5"
+            >
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                {s.label}
+              </div>
+              <div className="mt-2 text-3xl font-semibold text-white">
+                {s.value}
+              </div>
             </div>
-            <div className="mt-2 text-3xl font-semibold text-white">
-              {s.value}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
