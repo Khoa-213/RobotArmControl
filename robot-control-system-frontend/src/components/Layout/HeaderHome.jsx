@@ -26,7 +26,7 @@ function HeaderHome({ onLoginClick }) {
             RoboArm
           </h1>
           <span className="text-xs text-gray-600 font-semibold tracking-widest">
-            CONTROL HUB
+            CONTROL ROBOT ARM
           </span>
         </div>
       </div>
