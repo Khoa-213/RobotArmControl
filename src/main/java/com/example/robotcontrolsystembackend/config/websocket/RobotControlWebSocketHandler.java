@@ -1,5 +1,6 @@
 package com.example.robotcontrolsystembackend.config.websocket;
 
+
 import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,12 +8,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+
 import java.io.IOException;
 import java.util.concurrent.CopyOnWriteArrayList;
+
 
 @Slf4j
 @Component
 public class RobotControlWebSocketHandler extends TextWebSocketHandler {
+
 
     private static final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -33,6 +37,7 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
                 sessions.size()
         );
     }
+
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
@@ -81,11 +86,13 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
         log.info("Client disconnected: {} | Remaining: {}", session.getId(), sessions.size());
     }
+
 
     /**
      * Broadcast a message to all connected clients
@@ -105,6 +112,7 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
         log.info("Broadcast message to {} clients: {}", sessions.size(), message);
     }
 
+
     /**
      * Get the number of connected clients
      */
@@ -112,3 +120,4 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
         return sessions.size();
     }
 }
+
