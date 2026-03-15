@@ -1,6 +1,10 @@
 package com.example.robotcontrolsystembackend.presentation.controller.runtime;
 
+import com.example.robotcontrolsystembackend.application.dto.request.runtime.StartSessionRequest;
+import com.example.robotcontrolsystembackend.application.dto.response.runtime.SessionStatusResponse;
+import com.example.robotcontrolsystembackend.application.service.runtime.ControlSessionService;
 import com.example.robotcontrolsystembackend.common.response.ApiResponse;
+import com.example.robotcontrolsystembackend.domain.enumtype.ControlMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Robot Runtime", description = "APIs for real-time robot arm control")
 public class RobotRuntimeController {
 
-    // TODO: Inject RobotRuntimeService when implemented
+    private final ControlSessionService controlSessionService;
 
     @GetMapping("/status")
     @Operation(summary = "Get robot status", description = "Get current robot arm status (All roles)")
@@ -58,12 +62,19 @@ public class RobotRuntimeController {
     @PostMapping("/sessions")
     @Operation(summary = "Start robot session", description = "Start a new robot arm control session (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> createRobotSession() {
-        // TODO: Implement with RobotRuntimeService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .success(true)
-                .message("Robot session started successfully")
-                .data("Session started")
+        public ResponseEntity<ApiResponse<SessionStatusResponse>> createRobotSession(
+            @RequestParam(required = false) Long deviceId,
+            @RequestParam(defaultValue = "BUTTON") ControlMode controlMode) {
+        SessionStatusResponse response = controlSessionService.startSession(
+            StartSessionRequest.builder()
+                .controlMode(controlMode)
+                .deviceId(deviceId)
+                .build()
+        );
+        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
+            .success(response.isSessionActive())
+            .message(response.getMessage())
+            .data(response)
                 .build());
     }
 
@@ -71,12 +82,12 @@ public class RobotRuntimeController {
     @PatchMapping("/sessions/current/status")
     @Operation(summary = "Stop robot session", description = "Stop the current robot arm control session (ADMIN, OPERATOR only)")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    public ResponseEntity<ApiResponse<String>> stopRobotSession() {
-        // TODO: Implement with RobotRuntimeService
-        return ResponseEntity.ok(ApiResponse.<String>builder()
+    public ResponseEntity<ApiResponse<SessionStatusResponse>> stopRobotSession() {
+        SessionStatusResponse response = controlSessionService.stopSession();
+        return ResponseEntity.ok(ApiResponse.<SessionStatusResponse>builder()
                 .success(true)
-                .message("Robot session stopped successfully")
-                .data("Session stopped")
+                .message(response.getMessage())
+                .data(response)
                 .build());
     }
 
