@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import FactoryTable from "../../../components/factories/FactoryTable";
 import AreaTable from "../../../components/areas/AreaTable";
 import CreateAreaModal from "../../../components/areas/CreateAreaModal";
@@ -8,16 +7,21 @@ import { getAreasByFactory, createArea, updateArea, deleteArea } from "../../../
 import { getFactories, getFactoryById } from "../../../api/factoryService";
 import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
+const SELECTED_FACTORY_KEY = "adminAreas.selectedFactoryId";
+
 export default function AreasPage() {
   const canManage = isAdminRole(getRole());
   const isOperator = isOperatorRole(getRole());
   const operatorFactoryId = getFactoryId();
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedFactoryIdRaw = searchParams.get("factoryId");
-  const selectedFactoryId = isOperator
-    ? (operatorFactoryId || null)
-    : (selectedFactoryIdRaw ? Number(selectedFactoryIdRaw) : null);
+  const [selectedFactoryIdState, setSelectedFactoryIdState] = useState(() => {
+    const raw = sessionStorage.getItem(SELECTED_FACTORY_KEY);
+    if (!raw || String(raw).trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  });
+
+  const selectedFactoryId = isOperator ? (operatorFactoryId || null) : selectedFactoryIdState;
 
   const [areas, setAreas] = useState([]);
   const [factories, setFactories] = useState([]);
@@ -38,8 +42,26 @@ export default function AreasPage() {
           setError("No factory is assigned to this operator.");
           return;
         }
-        const factory = await getFactoryById(operatorFactoryId);
-        setFactories(factory ? [factory] : []);
+        // Best-effort: prefer list+filter (often allowed), fall back to by-id, and
+        // finally to a minimal placeholder so Areas can still load.
+        try {
+          const factoriesData = await getFactories();
+          const list = Array.isArray(factoriesData) ? factoriesData : [];
+          const found = list.find((f) => Number(f?.factoryId) === Number(operatorFactoryId));
+          if (found) {
+            setFactories([found]);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
+        try {
+          const factory = await getFactoryById(operatorFactoryId);
+          setFactories(factory ? [factory] : [{ factoryId: operatorFactoryId, factoryName: `Factory #${operatorFactoryId}` }]);
+        } catch {
+          setFactories([{ factoryId: operatorFactoryId, factoryName: `Factory #${operatorFactoryId}` }]);
+        }
         return;
       }
 
@@ -79,10 +101,6 @@ export default function AreasPage() {
   useEffect(() => { loadFactories(); }, []);
 
   useEffect(() => {
-    if (!factories || factories.length === 0) {
-      setAreas([]);
-      return;
-    }
     if (selectedFactoryId) {
       loadAreasForFactory(selectedFactoryId);
     } else {
@@ -198,7 +216,12 @@ export default function AreasPage() {
           <FactoryTable
             factories={factories}
             loading={loading}
-            onRowClick={(f) => setSearchParams({ factoryId: String(f.factoryId) })}
+            onRowClick={(f) => {
+              const id = Number(f?.factoryId);
+              if (!Number.isFinite(id)) return;
+              sessionStorage.setItem(SELECTED_FACTORY_KEY, String(id));
+              setSelectedFactoryIdState(id);
+            }}
           />
         </div>
       ) : (
@@ -211,7 +234,10 @@ export default function AreasPage() {
               <button
                 type="button"
                 className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
-                onClick={() => setSearchParams({})}
+                onClick={() => {
+                  sessionStorage.removeItem(SELECTED_FACTORY_KEY);
+                  setSelectedFactoryIdState(null);
+                }}
                 disabled={loading}
               >
                 Change Factory

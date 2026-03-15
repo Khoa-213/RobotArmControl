@@ -34,6 +34,23 @@ export default function FactoriesPage() {
           setError("No factory is assigned to this operator.");
           return;
         }
+        // Some backends may not allow OPERATOR to call GET /api/factories/{id}.
+        // Prefer listing and filtering; fall back to by-id if needed.
+        let filtered = [];
+        try {
+          const data = await getFactories();
+          const list = Array.isArray(data) ? data : [];
+          const found = list.find((f) => Number(f?.factoryId) === Number(operatorFactoryId));
+          filtered = found ? [found] : [];
+        } catch {
+          filtered = [];
+        }
+
+        if (filtered.length > 0) {
+          setFactories(filtered);
+          return;
+        }
+
         const factory = await getFactoryById(operatorFactoryId);
         setFactories(factory ? [factory] : []);
         return;

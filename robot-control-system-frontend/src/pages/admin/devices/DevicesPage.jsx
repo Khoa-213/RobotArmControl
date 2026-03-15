@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import HubTable from "../../../components/hubs/HubTable";
 import DeviceTable from "../../../components/devices/DeviceTable";
@@ -11,15 +10,20 @@ import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
 import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
+const SELECTED_HUB_KEY = "adminDevices.selectedHubId";
+
 export default function DevicesPage() {
   const canManage = isAdminRole(getRole());
   const isOperator = isOperatorRole(getRole());
   const navigate = useNavigate();
   const operatorFactoryId = getFactoryId();
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedHubIdRaw = searchParams.get("hubId");
-  const selectedHubId = selectedHubIdRaw ? Number(selectedHubIdRaw) : null;
+  const [selectedHubId, setSelectedHubId] = useState(() => {
+    const raw = sessionStorage.getItem(SELECTED_HUB_KEY);
+    if (!raw || String(raw).trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  });
 
   const [devices, setDevices] = useState([]);
   const [hubs, setHubs] = useState([]);
@@ -244,7 +248,12 @@ export default function DevicesPage() {
           <HubTable
             hubs={hubs}
             loading={loading}
-            onRowClick={(h) => setSearchParams({ hubId: String(h.hubId) })}
+            onRowClick={(h) => {
+              const id = Number(h?.hubId);
+              if (!Number.isFinite(id)) return;
+              sessionStorage.setItem(SELECTED_HUB_KEY, String(id));
+              setSelectedHubId(id);
+            }}
           />
         </div>
       ) : (
@@ -254,7 +263,10 @@ export default function DevicesPage() {
             <button
               type="button"
               className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
-              onClick={() => setSearchParams({})}
+              onClick={() => {
+                sessionStorage.removeItem(SELECTED_HUB_KEY);
+                setSelectedHubId(null);
+              }}
               disabled={loading}
             >
               Change Hub
