@@ -4,12 +4,12 @@ import { cameraService } from "../api/cameraService";
 import { buildWsUrl, WebsocketService } from "../services/websocketService";
 
 const JOINT_LIMITS = [
-  [-90, 90],
-  [-45, 45],
-  [-60, 60],
-  [-90, 90],
-  [-90, 90],
-  [-90, 90],
+  [-175, 175], // J0 shoulder_link
+  [-45, 45],   // J1 arm_link
+  [-60, 60],   // J2 elbow_link
+  [-90, 90],   // J3 forearm_link
+  [-90, 90],   // J4 wrist_link
+  [-90, 90],   // J5 hand_link
 ];
 
 const SPEEDS_DEG_PER_SEC = [120, 90, 90, 100, 100, 100];
@@ -58,24 +58,26 @@ function countFingers(landmarks, handedness) {
   if (!landmarks || landmarks.length < 21) return 0;
 
   let fingers = 0;
-  // In MediaPipe, y increases downward; "open" means tip is above pip.
-  if (landmarks[8].y < landmarks[6].y) fingers += 1;
-  if (landmarks[12].y < landmarks[10].y) fingers += 1;
-  if (landmarks[16].y < landmarks[14].y) fingers += 1;
-  if (landmarks[20].y < landmarks[18].y) fingers += 1;
+  // 4 ngón giữ nguyên điều kiện cũ
+  if (landmarks[8].y < landmarks[6].y) fingers += 1;    // trỏ
+  if (landmarks[12].y < landmarks[10].y) fingers += 1;  // giữa
+  if (landmarks[16].y < landmarks[14].y) fingers += 1;  // áp út
+  if (landmarks[20].y < landmarks[18].y) fingers += 1;  // út
 
+  // Ngón cái: tối ưu nhận diện
   const thumbDx = landmarks[4].x - landmarks[2].x;
-  let thumbOpen;
+  const thumbDy = Math.abs(landmarks[4].y - landmarks[2].y);
+  let thumbOpen = false;
   if (handedness === "Right") {
-    thumbOpen = thumbDx > 0.03;
+    thumbOpen = thumbDx > 0.025 && thumbDy < 0.15;
   } else if (handedness === "Left") {
-    thumbOpen = thumbDx < -0.03;
+    thumbOpen = thumbDx < -0.025 && thumbDy < 0.15;
   } else {
-    thumbOpen = Math.abs(thumbDx) > 0.05;
+    thumbOpen = Math.abs(thumbDx) > 0.035 && thumbDy < 0.15;
   }
 
   if (!thumbOpen) {
-    thumbOpen = Math.abs(thumbDx) > 0.07;
+    thumbOpen = Math.abs(thumbDx) > 0.06;
   }
 
   if (thumbOpen) fingers += 1;
@@ -88,6 +90,9 @@ function getHandedness(results) {
   return null;
 }
 
+function lowPassFilter(alpha, prev, next) {
+  return prev == null ? next : prev * (1 - alpha) + next * alpha;
+}
 
 export function useAiCamera() {
   const videoRef = useRef(null);
@@ -320,9 +325,9 @@ export function useAiCamera() {
       if (palmXRaw == null) return;
 
       // low-pass filter to reduce jitter
-      const alpha = 0.25;
+      const alpha = 0.25; // hoặc nhỏ hơn để mượt hơn, ví dụ 0.15
       const prev = palmXFilteredRef.current;
-      const filteredRaw = prev == null ? palmXRaw : prev + alpha * (palmXRaw - prev);
+      const filteredRaw = lowPassFilter(alpha, prev, palmXRaw);
       palmXFilteredRef.current = filteredRaw;
 
       debugRef.current.palmX = filteredRaw;
