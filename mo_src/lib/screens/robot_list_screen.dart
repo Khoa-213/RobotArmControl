@@ -1,6 +1,6 @@
 // File: lib/screens/robot_list_screen.dart
 import 'package:flutter/material.dart';
-import '../widgets/robot_card.dart'; // Phải import widget card vào đây
+import '../widgets/robot_card.dart';
 
 class RobotListScreen extends StatelessWidget {
   const RobotListScreen({super.key});

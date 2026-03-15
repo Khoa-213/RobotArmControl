@@ -11,7 +11,7 @@ class Factory {
     required this.status,
   });
 
-  // Chuyển đổi JSON từ Spring Boot thành Object trong Flutter
+  // Map JSON fields from backend response to the Flutter model.
   factory Factory.fromJson(Map<String, dynamic> json) {
     return Factory(
       id: (json['factory_id'] ?? json['factoryId'] ?? '').toString(),

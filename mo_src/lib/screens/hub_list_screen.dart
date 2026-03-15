@@ -2,34 +2,42 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_navigation.dart';
 import '../constants/app_spacing.dart';
-import '../models/factory.dart';
+import '../models/area.dart';
+import '../models/hub.dart';
 import '../services/api_service.dart';
 import '../widgets/app_entity_tile.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_states.dart';
-import 'area_list_screen.dart';
 import 'api_login_screen.dart';
+import 'device_list_screen.dart';
 
-class FactoryListScreen extends StatefulWidget {
-  const FactoryListScreen({super.key});
+class HubListScreen extends StatefulWidget {
+  final Area area;
+  final String factoryName;
+
+  const HubListScreen({
+    super.key,
+    required this.area,
+    required this.factoryName,
+  });
 
   @override
-  State<FactoryListScreen> createState() => _FactoryListScreenState();
+  State<HubListScreen> createState() => _HubListScreenState();
 }
 
-class _FactoryListScreenState extends State<FactoryListScreen> {
+class _HubListScreenState extends State<HubListScreen> {
   final ApiService _apiService = ApiService();
-  late Future<List<Factory>> _factoriesFuture;
+  late Future<List<Hub>> _hubsFuture;
 
   @override
   void initState() {
     super.initState();
-    _factoriesFuture = _apiService.fetchFactories();
+    _hubsFuture = _apiService.fetchHubsByArea(widget.area.id);
   }
 
-  void _reloadFactories() {
+  void _reloadHubs() {
     setState(() {
-      _factoriesFuture = _apiService.fetchFactories();
+      _hubsFuture = _apiService.fetchHubsByArea(widget.area.id);
     });
   }
 
@@ -40,14 +48,14 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
     );
 
     if (isLoggedIn == true) {
-      _reloadFactories();
+      _reloadHubs();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppShell(
-      title: 'Select Factory',
+      title: 'Hubs • ${widget.area.name}',
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -55,8 +63,8 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
           icon: const Icon(Icons.login),
         ),
       ],
-      child: FutureBuilder<List<Factory>>(
-        future: _factoriesFuture,
+      child: FutureBuilder<List<Hub>>(
+        future: _hubsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const AppLoadingState();
@@ -65,37 +73,47 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
           if (snapshot.hasError) {
             final isAuthError = snapshot.error is ApiAuthException;
             return AppErrorState(
-              title: 'Unable to load factories',
+              title: 'Unable to load hubs',
               message: '${snapshot.error}',
               actionLabel: isAuthError ? 'Sign in' : 'Retry',
               onAction: isAuthError
                   ? _openLoginScreenAndReload
-                  : _reloadFactories,
+                  : _reloadHubs,
             );
           }
 
-          final factories = snapshot.data ?? [];
-          if (factories.isEmpty) {
-            return const AppEmptyState(message: 'No factories available.');
+          final hubs = snapshot.data ?? [];
+          if (hubs.isEmpty) {
+            return const AppEmptyState(message: 'No hubs available.');
           }
 
           return RefreshIndicator(
-            onRefresh: () async => _reloadFactories(),
+            onRefresh: () async => _reloadHubs(),
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              itemCount: factories.length,
+              itemCount: hubs.length,
               separatorBuilder: (context, index) =>
                   const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
-                final factory = factories[index];
+                final hub = hubs[index];
+                final subtitleParts = <String>[
+                  if (hub.description.isNotEmpty) hub.description,
+                ];
+
                 return AppEntityTile(
-                  icon: Icons.domain,
-                  title: factory.name,
-                  subtitle: factory.location,
-                  status: factory.status,
+                  icon: Icons.hub,
+                  title: hub.name,
+                  subtitle: subtitleParts.join(' • '),
+                  status: hub.status,
                   onTap: () => Navigator.push(
                     context,
-                    appRoute(AreaListScreen(factory: factory)),
+                    appRoute(
+                      DeviceListScreen(
+                        factoryName: widget.factoryName,
+                        areaName: widget.area.name,
+                        hub: hub,
+                      ),
+                    ),
                   ),
                 );
               },

@@ -2,34 +2,44 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_navigation.dart';
 import '../constants/app_spacing.dart';
-import '../models/factory.dart';
+import '../models/device.dart';
+import '../models/hub.dart';
 import '../services/api_service.dart';
 import '../widgets/app_entity_tile.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_states.dart';
-import 'area_list_screen.dart';
 import 'api_login_screen.dart';
+import 'main_screen.dart';
 
-class FactoryListScreen extends StatefulWidget {
-  const FactoryListScreen({super.key});
+class DeviceListScreen extends StatefulWidget {
+  final Hub hub;
+  final String factoryName;
+  final String areaName;
+
+  const DeviceListScreen({
+    super.key,
+    required this.hub,
+    required this.factoryName,
+    required this.areaName,
+  });
 
   @override
-  State<FactoryListScreen> createState() => _FactoryListScreenState();
+  State<DeviceListScreen> createState() => _DeviceListScreenState();
 }
 
-class _FactoryListScreenState extends State<FactoryListScreen> {
+class _DeviceListScreenState extends State<DeviceListScreen> {
   final ApiService _apiService = ApiService();
-  late Future<List<Factory>> _factoriesFuture;
+  late Future<List<Device>> _devicesFuture;
 
   @override
   void initState() {
     super.initState();
-    _factoriesFuture = _apiService.fetchFactories();
+    _devicesFuture = _apiService.fetchDevicesByHub(widget.hub.id);
   }
 
-  void _reloadFactories() {
+  void _reloadDevices() {
     setState(() {
-      _factoriesFuture = _apiService.fetchFactories();
+      _devicesFuture = _apiService.fetchDevicesByHub(widget.hub.id);
     });
   }
 
@@ -40,14 +50,14 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
     );
 
     if (isLoggedIn == true) {
-      _reloadFactories();
+      _reloadDevices();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppShell(
-      title: 'Select Factory',
+      title: 'Devices • ${widget.hub.name}',
       actions: [
         IconButton(
           tooltip: 'Sign in again',
@@ -55,8 +65,8 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
           icon: const Icon(Icons.login),
         ),
       ],
-      child: FutureBuilder<List<Factory>>(
-        future: _factoriesFuture,
+      child: FutureBuilder<List<Device>>(
+        future: _devicesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const AppLoadingState();
@@ -65,38 +75,46 @@ class _FactoryListScreenState extends State<FactoryListScreen> {
           if (snapshot.hasError) {
             final isAuthError = snapshot.error is ApiAuthException;
             return AppErrorState(
-              title: 'Unable to load factories',
+              title: 'Unable to load devices',
               message: '${snapshot.error}',
               actionLabel: isAuthError ? 'Sign in' : 'Retry',
               onAction: isAuthError
                   ? _openLoginScreenAndReload
-                  : _reloadFactories,
+                  : _reloadDevices,
             );
           }
 
-          final factories = snapshot.data ?? [];
-          if (factories.isEmpty) {
-            return const AppEmptyState(message: 'No factories available.');
+          final devices = snapshot.data ?? [];
+          if (devices.isEmpty) {
+            return const AppEmptyState(message: 'No devices available.');
           }
 
           return RefreshIndicator(
-            onRefresh: () async => _reloadFactories(),
+            onRefresh: () async => _reloadDevices(),
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              itemCount: factories.length,
+              itemCount: devices.length,
               separatorBuilder: (context, index) =>
                   const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
-                final factory = factories[index];
+                final device = devices[index];
+                final subtitleParts = <String>[
+                  if (device.deviceType.isNotEmpty) device.deviceType,
+                  if (device.robotType.isNotEmpty) device.robotType,
+                  if (device.model.isNotEmpty) device.model,
+                ];
+
                 return AppEntityTile(
-                  icon: Icons.domain,
-                  title: factory.name,
-                  subtitle: factory.location,
-                  status: factory.status,
-                  onTap: () => Navigator.push(
-                    context,
-                    appRoute(AreaListScreen(factory: factory)),
-                  ),
+                  icon: Icons.precision_manufacturing,
+                  title: device.name,
+                  subtitle: subtitleParts.join(' • '),
+                  status: device.status,
+                  onTap: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      appRoute(const MainScreen(initialIndex: 3)),
+                      (route) => false,
+                    );
+                  },
                 );
               },
             ),

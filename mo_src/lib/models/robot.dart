@@ -9,7 +9,7 @@ class Robot {
 
   Robot({required this.name, required this.id, required this.status, required this.battery});
 
-  // Hàm này cực kỳ quan trọng để dịch dữ liệu từ Backend
+  // Map backend JSON data to this model.
   factory Robot.fromJson(Map<String, dynamic> json) {
     return Robot(
       id: json['id'] ?? 'Unknown',
@@ -19,7 +19,7 @@ class Robot {
     );
   }
 
-  // Tiện ích để tự động chọn màu dựa trên status
+  // Helper to derive the color from current status.
   Color get statusColor {
     if (status == 'Online') return Colors.green;
     if (status == 'Busy') return Colors.orange;

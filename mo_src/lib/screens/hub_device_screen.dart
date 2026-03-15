@@ -23,9 +23,9 @@ class HubDeviceScreen extends StatelessWidget {
               color: Colors.black,
             ),
             title: const Text('Robot Arm R-01'),
-            subtitle: const Text('Status: Active'), // Trạng thái mặc định
+            subtitle: const Text('Status: Active'),
             onTap: () {
-              // Chuyển thẳng về MainScreen ở tab Control (index 3).
+              // Navigate directly to MainScreen at the Control tab (index 3).
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => const MainScreen(initialIndex: 3),
