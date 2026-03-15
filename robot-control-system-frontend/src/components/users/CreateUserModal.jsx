@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getFactories } from "../../api/factoryService";
 
 export default function CreateUserModal({ open, onClose, onSubmit, loading }) {
-  const [form, setForm] = useState({ username: "", email: "", password: "", factoryId: "", status: "Active" });
+  const [form, setForm] = useState({ username: "", email: "", password: "", factoryId: "", status: "Active", role: "OPERATOR" });
   const [error, setError] = useState("");
   const [factories, setFactories] = useState([]);
   const [loadingFactories, setLoadingFactories] = useState(false);
@@ -54,13 +54,13 @@ export default function CreateUserModal({ open, onClose, onSubmit, loading }) {
     }
 
     setError("");
-    onSubmit({ username, email, password, factoryId, status: form.status });
-    setForm({ username: "", email: "", password: "", factoryId: "", status: "Active" });
+    onSubmit({ username, email, password, factoryId, status: form.status, role: form.role });
+    setForm({ username: "", email: "", password: "", factoryId: "", status: "Active", role: "OPERATOR" });
   }
 
   function handleClose() {
     setError("");
-    setForm({ username: "", email: "", password: "", factoryId: "", status: "Active" });
+    setForm({ username: "", email: "", password: "", factoryId: "", status: "Active", role: "OPERATOR" });
     onClose();
   }
 
@@ -146,7 +146,21 @@ export default function CreateUserModal({ open, onClose, onSubmit, loading }) {
           </label>
 
           <label className="block">
-            <div className="text-xs text-white/60 mb-1">Status</div>
+            <div className="text-xs text-white/60 mb-1">Role</div>
+            <select
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+              value={form.role}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, role: e.target.value }))
+              }
+              disabled={loading}
+            >
+              <option className="bg-neutral-900" value="OPERATOR">Operator</option>
+              <option className="bg-neutral-900" value="VIEWER">Viewer</option>
+            </select>
+          </label>
+
+          <label className="block">
             <select
               className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
               value={form.status}

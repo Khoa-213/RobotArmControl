@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import UserTable from "../../../components/users/UserTable";
 import CreateUserModal from "../../../components/users/CreateUserModal";
 import EditUserModal from "../../../components/users/EditUserModal";
+import UserDetailModal from "../../../components/users/UserDetailModal";
 import {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
+  updateUserRole,
 } from "../../../api/userService";
 import { getRole, isAdminRole } from "../../../utils/auth";
 
@@ -20,14 +22,17 @@ export default function UsersPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null);
 
   async function loadData() {
     try {
       setLoading(true);
       setError("");
       const data = await getUsers();
+      console.log("Users loaded:", data);
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
+      console.error("Load users error:", e);
       setError(e?.message || "Failed to load users");
     } finally {
       setLoading(false);
@@ -42,11 +47,13 @@ export default function UsersPage() {
     try {
       setSaving(true);
       setError("");
-      // Create user without factoryId and status first
-      const { factoryId, status, ...userCreationData } = formData;
+      // Create user without factoryId, status, and role first
+      const { factoryId, status, role, ...userCreationData } = formData;
       const created = await createUser(userCreationData);
       
-      // Then update with factory and status assignment
+      console.log("User created:", created);
+      
+      // Then update with factory, status, and role assignment
       if (factoryId || status) {
         const updateData = { 
           username: created.username,
@@ -55,14 +62,27 @@ export default function UsersPage() {
         if (factoryId) updateData.factoryId = factoryId;
         if (status) updateData.status = status;
         
+        console.log("Updating user with:", updateData);
+        
         const updated = await updateUser(created.userId, updateData);
-        setUsers((prev) => [updated, ...prev]);
+        console.log("User after update:", updated);
+        
+        // Use dedicated role endpoint to set role
+        if (role) {
+          console.log("Setting role to:", role);
+          const withRole = await updateUserRole(created.userId, role);
+          console.log("User after role update:", withRole);
+          setUsers((prev) => [withRole, ...prev]);
+        } else {
+          setUsers((prev) => [updated, ...prev]);
+        }
       } else {
         setUsers((prev) => [created, ...prev]);
       }
       
       setCreateOpen(false);
     } catch (e) {
+      console.error("Create user error:", e);
       setError(e?.message || "Failed to create user");
     } finally {
       setSaving(false);
@@ -73,8 +93,21 @@ export default function UsersPage() {
     try {
       setSaving(true);
       setError("");
-      const updated = await updateUser(id, formData);
-      setUsers((prev) => prev.map((u) => (u.userId === id ? updated : u)));
+      
+      // Separate role from other data
+      const { role, ...otherData } = formData;
+      
+      // Update non-role fields first
+      const updated = await updateUser(id, otherData);
+      
+      // Then update role separately if provided
+      if (role) {
+        const withRole = await updateUserRole(id, role);
+        setUsers((prev) => prev.map((u) => (u.userId === id ? withRole : u)));
+      } else {
+        setUsers((prev) => prev.map((u) => (u.userId === id ? updated : u)));
+      }
+      
       setEditTarget(null);
     } catch (e) {
       setError(e?.message || "Failed to update user");
@@ -140,6 +173,12 @@ export default function UsersPage() {
         </>
       )}
 
+      <UserDetailModal
+        open={!!detailTarget}
+        user={detailTarget}
+        onClose={() => setDetailTarget(null)}
+      />
+
       <div className="mt-6 rounded-2xl border border-white/10 bg-neutral-950/40 overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
           <div className="text-xs uppercase tracking-wider text-white/50">
@@ -149,6 +188,7 @@ export default function UsersPage() {
         <UserTable
           users={users}
           loading={loading}
+          onView={(u) => setDetailTarget(u)}
           onEdit={canManage ? (u) => setEditTarget(u) : undefined}
           onDelete={canManage ? handleDelete : undefined}
         />

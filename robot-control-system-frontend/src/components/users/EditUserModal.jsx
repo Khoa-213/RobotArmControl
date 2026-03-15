@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getFactories } from "../../api/factoryService";
 
 export default function EditUserModal({ open, onClose, onSubmit, loading, user }) {
-  const [form, setForm] = useState({ username: "", email: "", factoryId: "", status: "Active" });
+  const [form, setForm] = useState({ username: "", email: "", factoryId: "", status: "Active", role: "VIEWER" });
   const [error, setError] = useState("");
   const [factories, setFactories] = useState([]);
   const [loadingFactories, setLoadingFactories] = useState(false);
@@ -14,6 +14,7 @@ export default function EditUserModal({ open, onClose, onSubmit, loading, user }
         email: user.email || "",
         factoryId: user.factoryId || "",
         status: user.status || "Active",
+        role: user.role || "VIEWER",
       });
       loadFactories();
     }
@@ -49,13 +50,13 @@ export default function EditUserModal({ open, onClose, onSubmit, loading, user }
     }
 
     setError("");
-    onSubmit(user.userId, { username, email, factoryId, status: form.status });
-    setForm({ username: "", email: "", factoryId: "", status: "Active" });
+    onSubmit(user.userId, { username, email, factoryId, status: form.status, role: form.role });
+    setForm({ username: "", email: "", factoryId: "", status: "Active", role: "VIEWER" });
   }
 
   function handleClose() {
     setError("");
-    setForm({ username: "", email: "", factoryId: "", status: "Active" });
+    setForm({ username: "", email: "", factoryId: "", status: "Active", role: "VIEWER" });
     onClose();
   }
 
@@ -127,7 +128,22 @@ export default function EditUserModal({ open, onClose, onSubmit, loading, user }
           </label>
 
           <label className="block">
-            <div className="text-xs text-white/60 mb-1">Status</div>
+            <div className="text-xs text-white/60 mb-1">Role</div>
+            <select
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
+              value={form.role}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, role: e.target.value }))
+              }
+              disabled={loading}
+            >
+              <option className="bg-neutral-900" value="ADMIN">Admin</option>
+              <option className="bg-neutral-900" value="OPERATOR">Operator</option>
+              <option className="bg-neutral-900" value="VIEWER">Viewer</option>
+            </select>
+          </label>
+
+          <label className="block">
             <select
               className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white outline-none focus:border-white/20"
               value={form.status}
