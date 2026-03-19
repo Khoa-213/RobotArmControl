@@ -656,14 +656,12 @@ export function useAiCamera() {
       const pinchDistances = computePinchDistances(landmarks);
       debugRef.current.pinchDistance = pinchDistances?.thumbIndex ?? null;
       const inNeutralZone = isNeutralControlZone(control);
-
-      if (inNeutralZone) {
-        resetPendingAutoGripper({ pendingGripperActionRef, pendingGripperSinceRef });
-        return;
-      }
-
       const gripperAction = detectGripperActionFromPinches(pinchDistances);
       maybeSendAutoGripperAction(gripperAction, now);
+
+      if (inNeutralZone) {
+        return;
+      }
 
       // Python-style: integrate ONLY the selected joint
       const next = anglesRef.current.slice(0, 6);
