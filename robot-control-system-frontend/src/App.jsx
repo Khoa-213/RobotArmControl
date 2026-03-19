@@ -29,11 +29,24 @@ function RoleProtectedRoute({ allow = [], children }) {
   return children;
 }
 
+function PublicRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const role = getRole();
+  return token ? <Navigate to={getDefaultAdminPath(role)} replace /> : children;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <HomePage />
+            </PublicRoute>
+          }
+        />
 
         <Route
           path="/admin"

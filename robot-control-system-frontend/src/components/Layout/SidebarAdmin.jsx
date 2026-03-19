@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   DashboardOutlined,
@@ -11,9 +11,31 @@ import {
 } from "@ant-design/icons";
 import { getRole, isAdminRole, isOperatorRole } from "../../utils/auth";
 
+function parseJwt(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 function SidebarAdmin({ collapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const role = getRole();
   const isAdmin = isAdminRole(role);
@@ -52,6 +74,37 @@ function SidebarAdmin({ collapsed }) {
   const username = String(localStorage.getItem("username") || "").trim();
   const displayName = username || "User";
   const avatarText = displayName ? displayName.slice(0, 1).toUpperCase() : "U";
+
+  const storedEmail = String(localStorage.getItem("email") || "").trim();
+  const token = localStorage.getItem("token");
+  const claims = parseJwt(token);
+  const emailFromClaims =
+    (claims && (claims.email || claims.userEmail || claims.mail || claims.upn)) || "";
+  const email =
+    storedEmail ||
+    (typeof emailFromClaims === "string" && emailFromClaims.includes("@")
+      ? emailFromClaims
+      : typeof claims?.sub === "string" && claims.sub.includes("@")
+        ? claims.sub
+        : "");
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const onDocMouseDown = (e) => {
+      const el = userMenuRef.current;
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      setUserMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    setUserMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <aside
@@ -101,15 +154,41 @@ function SidebarAdmin({ collapsed }) {
         </ul>
       </nav>
 
-      <div className={[
-        "p-3 border-t border-white/10",
-        collapsed ? "flex justify-center" : "",
-      ].join(" ")}
-      >
-        <div className={[
-          "flex items-center gap-3",
-          collapsed ? "justify-center" : "",
+      <div
+        ref={userMenuRef}
+        className={[
+          "p-3 border-t border-white/10",
+          "relative",
+          collapsed ? "flex justify-center" : "",
         ].join(" ")}
+      >
+        {userMenuOpen && (
+          <div
+            className={[
+              "absolute bottom-full left-3 right-3 mb-2",
+              "rounded-lg border border-white/10",
+              "bg-neutral-950",
+              "p-3",
+            ].join(" ")}
+            role="menu"
+            aria-label="User menu"
+          >
+            <div className="text-sm font-semibold truncate">{displayName}</div>
+            <div className="text-xs text-white/70 truncate">{email || ""}</div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setUserMenuOpen((v) => !v)}
+          className={[
+            "w-full flex items-center gap-3",
+            "rounded-lg",
+            "hover:bg-white/5",
+            collapsed ? "justify-center" : "px-2 py-2",
+          ].join(" ")}
+          aria-haspopup="menu"
+          aria-expanded={userMenuOpen}
         >
           <div
             className={[
@@ -126,11 +205,11 @@ function SidebarAdmin({ collapsed }) {
           </div>
 
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <div className="text-sm font-medium truncate">{displayName}</div>
             </div>
           )}
-        </div>
+        </button>
       </div>
     </aside>
   );

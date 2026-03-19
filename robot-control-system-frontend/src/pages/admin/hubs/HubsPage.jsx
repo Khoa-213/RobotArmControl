@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import AreaTable from "../../../components/areas/AreaTable";
 import HubTable from "../../../components/hubs/HubTable";
 import CreateHubModal from "../../../components/hubs/CreateHubModal";
@@ -9,14 +8,19 @@ import { getAreasByFactory } from "../../../api/areaService";
 import { getFactories } from "../../../api/factoryService";
 import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
+const SELECTED_AREA_KEY = "adminHubs.selectedAreaId";
+
 export default function HubsPage() {
   const canManage = isAdminRole(getRole());
   const isOperator = isOperatorRole(getRole());
   const operatorFactoryId = getFactoryId();
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedAreaIdRaw = searchParams.get("areaId");
-  const selectedAreaId = selectedAreaIdRaw ? Number(selectedAreaIdRaw) : null;
+  const [selectedAreaId, setSelectedAreaId] = useState(() => {
+    const raw = sessionStorage.getItem(SELECTED_AREA_KEY);
+    if (!raw || String(raw).trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  });
 
   const [hubs, setHubs] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -209,7 +213,12 @@ async function handleCreate(formData) {
           <AreaTable
             areas={areas}
             loading={loading}
-            onRowClick={(a) => setSearchParams({ areaId: String(a.areaId) })}
+            onRowClick={(a) => {
+              const id = Number(a?.areaId);
+              if (!Number.isFinite(id)) return;
+              sessionStorage.setItem(SELECTED_AREA_KEY, String(id));
+              setSelectedAreaId(id);
+            }}
           />
         </div>
       ) : (
@@ -221,7 +230,10 @@ async function handleCreate(formData) {
             <button
               type="button"
               className="h-9 px-3 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
-              onClick={() => setSearchParams({})}
+              onClick={() => {
+                sessionStorage.removeItem(SELECTED_AREA_KEY);
+                setSelectedAreaId(null);
+              }}
               disabled={loading}
             >
               Change Area
