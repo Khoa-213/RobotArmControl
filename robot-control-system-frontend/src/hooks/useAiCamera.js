@@ -15,6 +15,10 @@ const JOINT_LIMITS = [
 
 const SPEEDS_DEG_PER_SEC = [120, 90, 90, 100, 100, 100];
 const MODE_HOLD_MS = 300;
+const GRIPPER_GESTURE_HOLD_MS = 220;
+const GRIPPER_ACTION_COOLDOWN_MS = 800;
+const PINCH_GRAB_THRESHOLD = 0.045;
+const PINCH_RELEASE_THRESHOLD = 0.085;
 
 const SELFIE_MODE = String(import.meta.env.VITE_AI_CAMERA_SELFIE_MODE || "1") !== "0";
 const DEADZONE = 0.08;
@@ -53,6 +57,15 @@ function computePalmCenterX(landmarks) {
 function maybeMirror01(x) {
   if (x == null) return null;
   return SELFIE_MODE ? 1 - x : x;
+}
+
+function computePinchDistance(landmarks) {
+  const thumbTip = landmarks?.[4];
+  const indexTip = landmarks?.[8];
+  if (!thumbTip || !indexTip) return null;
+  const dx = thumbTip.x - indexTip.x;
+  const dy = thumbTip.y - indexTip.y;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 function countFingers(landmarks, handedness) {
@@ -126,6 +139,7 @@ export function useAiCamera() {
     landmarks: null,
     handednessRaw: null,
     palmX: null, // raw filtered (0..1) in video coords
+    pinchDistance: null,
     control: 0,
   });
 
@@ -150,6 +164,12 @@ export function useAiCamera() {
   const consecutiveWsSendErrorsRef = useRef(0);
 
   const wsServiceRef = useRef(null);
+
+  const lastGripperActionRef = useRef(null);
+  const pendingGripperActionRef = useRef(null);
+  const pendingGripperSinceRef = useRef(0);
+  const lastGripperSentAtRef = useRef(0);
+  const gripperCommandInFlightRef = useRef(false);
 
   const lastAiAnglesConsoleLogRef = useRef(0);
 
@@ -327,6 +347,75 @@ export function useAiCamera() {
     }
   }
 
+  async function sendGripperAction(action) {
+    if (isViewer) return false;
+
+    const normalized = String(action || "").trim().toLowerCase();
+    if (normalized !== "grab" && normalized !== "release") {
+      setError("Invalid gripper action");
+      return false;
+    }
+
+    const deviceId = sessionDeviceIdRef.current ?? getPreferredDeviceId();
+    if (deviceId == null || Number.isNaN(deviceId)) {
+      setError("Please select a device first.");
+      return false;
+    }
+
+    try {
+      await cameraService.sendGripperAction(normalized, Number(deviceId));
+      return true;
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Failed to send gripper command");
+      return false;
+    }
+  }
+
+  function detectGripperActionFromPinch(pinchDistance) {
+    if (pinchDistance == null) return null;
+    if (pinchDistance <= PINCH_GRAB_THRESHOLD) return "grab";
+    if (pinchDistance >= PINCH_RELEASE_THRESHOLD) return "release";
+    return null;
+  }
+
+  function maybeSendAutoGripperAction(action, nowMs) {
+    if (!action) return;
+
+    if (pendingGripperActionRef.current !== action) {
+      pendingGripperActionRef.current = action;
+      pendingGripperSinceRef.current = nowMs;
+      return;
+    }
+
+    if (nowMs - pendingGripperSinceRef.current < GRIPPER_GESTURE_HOLD_MS) {
+      return;
+    }
+
+    if (lastGripperActionRef.current === action) {
+      return;
+    }
+
+    if (nowMs - lastGripperSentAtRef.current < GRIPPER_ACTION_COOLDOWN_MS) {
+      return;
+    }
+
+    if (gripperCommandInFlightRef.current) {
+      return;
+    }
+
+    gripperCommandInFlightRef.current = true;
+    sendGripperAction(action)
+        .then((ok) => {
+          if (ok) {
+            lastGripperActionRef.current = action;
+            lastGripperSentAtRef.current = nowMs;
+          }
+        })
+        .finally(() => {
+          gripperCommandInFlightRef.current = false;
+        });
+  }
+
   async function endSession() {
     if (isViewer) return;
     setError("");
@@ -351,9 +440,9 @@ export function useAiCamera() {
         fps: lastFpsRef.current,
         internet: getInternetStatus(),
         uptimeSeconds:
-          sessionStartedAtRef.current > 0
-            ? (performance.now() - sessionStartedAtRef.current) / 1000
-            : null,
+            sessionStartedAtRef.current > 0
+                ? (performance.now() - sessionStartedAtRef.current) / 1000
+                : null,
         sessionId,
       };
 
@@ -456,6 +545,12 @@ export function useAiCamera() {
     isSendingAnglesRef.current = true;
     setIsSendingAngles(true);
 
+    lastGripperActionRef.current = null;
+    pendingGripperActionRef.current = null;
+    pendingGripperSinceRef.current = 0;
+    lastGripperSentAtRef.current = 0;
+    gripperCommandInFlightRef.current = false;
+
     initHands();
     await startLoop();
   }
@@ -540,6 +635,11 @@ export function useAiCamera() {
       const control = normalizePalmX(filteredForControl);
       debugRef.current.control = control;
 
+      const pinchDistance = computePinchDistance(landmarks);
+      debugRef.current.pinchDistance = pinchDistance;
+      const gripperAction = detectGripperActionFromPinch(pinchDistance);
+      maybeSendAutoGripperAction(gripperAction, now);
+
       // Python-style: integrate ONLY the selected joint
       const next = anglesRef.current.slice(0, 6);
       const j = clamp(selectedJointRef.current, 0, 5);
@@ -608,7 +708,7 @@ export function useAiCamera() {
         if (consecutiveSendErrorsRef.current >= 10 && !sendErrorShownRef.current) {
           sendErrorShownRef.current = true;
           setError(
-            "Hand tracking failed to run. Possible cause: MediaPipe assets blocked/unreachable (CDN) or insecure context. " +
+              "Hand tracking failed to run. Possible cause: MediaPipe assets blocked/unreachable (CDN) or insecure context. " +
               "Open DevTools Console/Network for details. " +
               (e?.message ? `(${e.message})` : "")
           );
@@ -667,6 +767,7 @@ export function useAiCamera() {
     error,
     startSession,
     endSession,
+    sendGripperAction,
     startCamera,
     stopCamera,
     start,

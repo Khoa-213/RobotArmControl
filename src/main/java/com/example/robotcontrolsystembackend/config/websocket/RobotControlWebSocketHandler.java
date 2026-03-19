@@ -45,6 +45,7 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
 
         String type = null;
         Integer anglesLen = null;
+        String action = null;
         try {
             JsonNode root = OBJECT_MAPPER.readTree(payload);
             JsonNode typeNode = root.get("type");
@@ -55,6 +56,11 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
                 JsonNode anglesNode = root.get("angles");
                 if (anglesNode != null && anglesNode.isArray()) {
                     anglesLen = anglesNode.size();
+                }
+            } else if ("robot_command".equals(type)) {
+                JsonNode actionNode = root.get("action");
+                if (actionNode != null && actionNode.isTextual()) {
+                    action = actionNode.asText();
                 }
             }
         } catch (Exception ignored) {
@@ -74,6 +80,8 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
                         anglesLen
                 );
             }
+        } else if ("robot_command".equals(type)) {
+            log.info("WS recv robot_command: fromId={} clients={} action={}", session.getId(), sessions.size(), action);
         } else {
             log.debug("WS recv: fromId={} payload={}", session.getId(), payload);
         }
