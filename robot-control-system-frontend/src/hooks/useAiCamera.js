@@ -17,11 +17,12 @@ const SPEEDS_DEG_PER_SEC = [120, 90, 90, 100, 100, 100];
 const MODE_HOLD_MS = 300;
 const GRIPPER_GESTURE_HOLD_MS = 220;
 const GRIPPER_ACTION_COOLDOWN_MS = 800;
-const PINCH_GRAB_THRESHOLD = 0.045;
-const PINCH_RELEASE_THRESHOLD = 0.085;
+const PINCH_CLOSED_THRESHOLD = 0.045;
 
 const SELFIE_MODE = String(import.meta.env.VITE_AI_CAMERA_SELFIE_MODE || "1") !== "0";
-const DEADZONE = 0.08;
+const ENABLE_DIRECT_WS_AI_ANGLES = String(import.meta.env.VITE_AI_CAMERA_DIRECT_WS_SEND || "0") === "1";
+const DEADZONE_RAW = Number(import.meta.env.VITE_AI_CAMERA_DEADZONE || 0.16);
+const DEADZONE = Number.isFinite(DEADZONE_RAW) ? Math.min(0.25, Math.max(0.05, DEADZONE_RAW)) : 0.16;
 const MAX_OFFSET = 0.35;
 
 function clamp(value, min, max) {
@@ -59,13 +60,28 @@ function maybeMirror01(x) {
   return SELFIE_MODE ? 1 - x : x;
 }
 
-function computePinchDistance(landmarks) {
-  const thumbTip = landmarks?.[4];
-  const indexTip = landmarks?.[8];
-  if (!thumbTip || !indexTip) return null;
-  const dx = thumbTip.x - indexTip.x;
-  const dy = thumbTip.y - indexTip.y;
+function computeFingerDistance(landmarks, aIdx, bIdx) {
+  const a = landmarks?.[aIdx];
+  const b = landmarks?.[bIdx];
+  if (!a || !b) return null;
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+function computePinchDistances(landmarks) {
+  const thumbIndex = computeFingerDistance(landmarks, 4, 8);
+  const thumbMiddle = computeFingerDistance(landmarks, 4, 12);
+  return { thumbIndex, thumbMiddle };
+}
+
+function isNeutralControlZone(control) {
+  return Math.abs(Number(control || 0)) < 1e-6;
+}
+
+function resetPendingAutoGripper(refs) {
+  refs.pendingGripperActionRef.current = null;
+  refs.pendingGripperSinceRef.current = 0;
 }
 
 function countFingers(landmarks, handedness) {
@@ -371,10 +387,12 @@ export function useAiCamera() {
     }
   }
 
-  function detectGripperActionFromPinch(pinchDistance) {
-    if (pinchDistance == null) return null;
-    if (pinchDistance <= PINCH_GRAB_THRESHOLD) return "grab";
-    if (pinchDistance >= PINCH_RELEASE_THRESHOLD) return "release";
+  function detectGripperActionFromPinches(pinchDistances) {
+    const thumbIndex = pinchDistances?.thumbIndex;
+    const thumbMiddle = pinchDistances?.thumbMiddle;
+
+    if (thumbIndex != null && thumbIndex <= PINCH_CLOSED_THRESHOLD) return "grab";
+    if (thumbMiddle != null && thumbMiddle <= PINCH_CLOSED_THRESHOLD) return "release";
     return null;
   }
 
@@ -635,9 +653,16 @@ export function useAiCamera() {
       const control = normalizePalmX(filteredForControl);
       debugRef.current.control = control;
 
-      const pinchDistance = computePinchDistance(landmarks);
-      debugRef.current.pinchDistance = pinchDistance;
-      const gripperAction = detectGripperActionFromPinch(pinchDistance);
+      const pinchDistances = computePinchDistances(landmarks);
+      debugRef.current.pinchDistance = pinchDistances?.thumbIndex ?? null;
+      const inNeutralZone = isNeutralControlZone(control);
+
+      if (inNeutralZone) {
+        resetPendingAutoGripper({ pendingGripperActionRef, pendingGripperSinceRef });
+        return;
+      }
+
+      const gripperAction = detectGripperActionFromPinches(pinchDistances);
       maybeSendAutoGripperAction(gripperAction, now);
 
       // Python-style: integrate ONLY the selected joint
@@ -671,7 +696,7 @@ export function useAiCamera() {
       }
 
       // Optional: WS direct (useful for debugging), but do not depend on it.
-      if (wsConnectedRef.current) {
+      if (ENABLE_DIRECT_WS_AI_ANGLES && wsConnectedRef.current) {
         const svc = wsServiceRef.current;
         const ok = svc?.sendJson(payload);
         if (!ok) {

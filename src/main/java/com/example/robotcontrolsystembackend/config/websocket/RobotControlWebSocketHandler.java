@@ -6,11 +6,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 
 import java.io.IOException;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 @Slf4j
@@ -18,7 +20,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class RobotControlWebSocketHandler extends TextWebSocketHandler {
 
 
-    private static final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    private static final int SEND_TIME_LIMIT_MS = 5000;
+    private static final int SEND_BUFFER_SIZE_BYTES = 512 * 1024;
+
+    private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final String ATTR_LAST_AI_ANGLES_LOG_MS = "lastAiAnglesLogMs";
@@ -26,7 +31,12 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        sessions.add(session);
+        WebSocketSession safeSession = new ConcurrentWebSocketSessionDecorator(
+            session,
+            SEND_TIME_LIMIT_MS,
+            SEND_BUFFER_SIZE_BYTES
+        );
+        sessions.put(session.getId(), safeSession);
         Object username = session.getAttributes().get("username");
         Object authenticated = session.getAttributes().get("authenticated");
         log.info(
@@ -87,17 +97,13 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
         }
 
         // Broadcast to all clients (Unity, Frontend, etc.)
-        for (WebSocketSession s : sessions) {
-            if (s.isOpen()) {
-                s.sendMessage(message);
-            }
-        }
+        broadcastRawPayload(payload);
     }
 
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessions.remove(session);
+        sessions.remove(session.getId());
         log.info("Client disconnected: {} | Remaining: {}", session.getId(), sessions.size());
     }
 
@@ -107,17 +113,15 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
      * Used by ControlSessionService to send camera control commands
      */
     public void broadcastMessage(String message) {
-        TextMessage textMessage = new TextMessage(message);
-        for (WebSocketSession s : sessions) {
-            if (s.isOpen()) {
-                try {
-                    s.sendMessage(textMessage);
-                } catch (IOException e) {
-                    log.error("Failed to send message to session {}: {}", s.getId(), e.getMessage());
-                }
-            }
-        }
+        broadcastRawPayload(message);
         log.info("Broadcast message to {} clients: {}", sessions.size(), message);
+    }
+
+    public boolean sendToDevice(String deviceId, String message) {
+        // Current WS topology does not bind a specific session to a device.
+        // Payload contains deviceId and Unity clients filter by deviceId.
+        int delivered = broadcastRawPayload(message);
+        return delivered > 0;
     }
 
 
@@ -126,6 +130,29 @@ public class RobotControlWebSocketHandler extends TextWebSocketHandler {
      */
     public int getConnectedClientsCount() {
         return sessions.size();
+    }
+
+    private int broadcastRawPayload(String payload) {
+        int delivered = 0;
+        for (WebSocketSession s : sessions.values()) {
+            if (sendSafely(s, payload)) {
+                delivered += 1;
+            }
+        }
+        return delivered;
+    }
+
+    private boolean sendSafely(WebSocketSession session, String payload) {
+        if (session == null || !session.isOpen()) {
+            return false;
+        }
+        try {
+            session.sendMessage(new TextMessage(payload));
+            return true;
+        } catch (IOException | IllegalStateException e) {
+            log.warn("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+            return false;
+        }
     }
 }
 

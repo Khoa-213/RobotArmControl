@@ -368,7 +368,7 @@ export default function AiCameraPage() {
                 WebSocket payload sent: {`{ "type": "ai_angles", "deviceId": "x", "angles": [a0..a5] }`} (exactly 6 numbers)
               </div>
               <div className="text-xs text-white/50">
-                Gripper action is auto-detected from pinch gesture (thumb-index): pinch close = grab, pinch open = release.
+                Gripper action uses pinch gestures to avoid conflicting with joint finger-count mode: thumb-index pinch = grab, thumb-middle pinch = release.
               </div>
               <div className="text-xs text-white/50">
                 Auto command payload: {`{ "type": "robot_command", "deviceId": "x", "action": "grab|release" }`}
