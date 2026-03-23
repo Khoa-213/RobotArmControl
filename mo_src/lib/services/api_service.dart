@@ -254,7 +254,7 @@ class ApiService {
       }
 
       final items = _extractItemsFromResponse(response.body);
-      await SessionService.touchSession();
+      unawaited(SessionService.touchSession());
       _logRequestDuration(
         method: 'GET',
         uri: uri,
@@ -326,7 +326,7 @@ class ApiService {
         throw Exception('Invalid response format');
       }
 
-      await SessionService.touchSession();
+      unawaited(SessionService.touchSession());
       _logRequestDuration(
         method: 'GET',
         uri: uri,
@@ -1064,6 +1064,144 @@ class ApiService {
         error: e,
       );
       throw Exception('Unable to update status: $e');
+    }
+  }
+
+  Future<void> postCameraAngles({
+    required int deviceId,
+    required List<double> anglesDeg,
+  }) async {
+    if (deviceId <= 0) {
+      throw ArgumentError('deviceId must be a positive integer.');
+    }
+
+    if (anglesDeg.length != 6) {
+      throw ArgumentError(
+        'Joint payload must contain exactly 6 angle values in degrees.',
+      );
+    }
+
+    final uri = Uri.parse('$baseUrl/camera/angles');
+    final stopwatch = Stopwatch()..start();
+    final payload = anglesDeg.map((value) => value.toDouble()).toList();
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: _jsonAuthorizedHeaders(),
+            body: json.encode({'deviceId': deviceId, 'angles': payload}),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await SessionService.clearSession();
+        throw ApiAuthException(
+          'Token is invalid or expired (${response.statusCode}): ${_extractApiMessage(response.body)}',
+        );
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          'Post camera angles failed (${response.statusCode}): ${_extractApiMessage(response.body)}',
+        );
+      }
+
+      await SessionService.touchSession();
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        statusCode: response.statusCode,
+      );
+    } on ApiAuthException {
+      _logRequestDuration(method: 'POST', uri: uri, stopwatch: stopwatch);
+      rethrow;
+    } on TimeoutException {
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        error: 'timeout',
+      );
+      throw Exception(
+        'Request timed out after ${_requestTimeout.inSeconds}s. The backend may be sleeping or unreachable.',
+      );
+    } catch (e) {
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        error: e,
+      );
+      throw Exception('Unable to post camera angles: $e');
+    }
+  }
+
+  Future<void> postCameraCommand({
+    required int deviceId,
+    required bool grabActive,
+  }) async {
+    if (deviceId <= 0) {
+      throw ArgumentError('deviceId must be a positive integer.');
+    }
+
+    final uri = Uri.parse('$baseUrl/camera/commands');
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: _jsonAuthorizedHeaders(),
+            body: json.encode({
+              'deviceId': deviceId,
+              'action': grabActive ? 'grab' : 'release',
+            }),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await SessionService.clearSession();
+        throw ApiAuthException(
+          'Token is invalid or expired (${response.statusCode}): ${_extractApiMessage(response.body)}',
+        );
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          'Post camera command failed (${response.statusCode}): ${_extractApiMessage(response.body)}',
+        );
+      }
+
+      await SessionService.touchSession();
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        statusCode: response.statusCode,
+      );
+    } on ApiAuthException {
+      _logRequestDuration(method: 'POST', uri: uri, stopwatch: stopwatch);
+      rethrow;
+    } on TimeoutException {
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        error: 'timeout',
+      );
+      throw Exception(
+        'Request timed out after ${_requestTimeout.inSeconds}s. The backend may be sleeping or unreachable.',
+      );
+    } catch (e) {
+      _logRequestDuration(
+        method: 'POST',
+        uri: uri,
+        stopwatch: stopwatch,
+        error: e,
+      );
+      throw Exception('Unable to post camera command: $e');
     }
   }
 
