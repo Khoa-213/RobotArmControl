@@ -5,6 +5,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_states.dart';
 import 'api_login_screen.dart';
@@ -21,28 +22,36 @@ class DeviceScreen extends StatefulWidget {
 class _DeviceScreenState extends State<DeviceScreen> {
   final ApiService _apiService = ApiService();
   late Future<List<_DeviceRecord>> _devicesFuture;
+  int? _selectedControlDeviceId;
+
+  @override
+  void initState() {
+    super.initState();
+    _devicesFuture = _loadAllDevices();
+    _restoreSelectedControlDevice();
+  }
+
+  Future<void> _restoreSelectedControlDevice() async {
+    final selected = await SessionService.getControlDevice();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _selectedControlDeviceId = selected?.deviceId;
+    });
+  }
 
   int? _parseRobotId(String rawDeviceId) {
     final value = rawDeviceId.trim();
     if (value.isEmpty) {
       return null;
     }
-    final direct = int.tryParse(value);
-    if (direct != null) {
-      return direct;
-    }
 
-    final match = RegExp(r'\d+').firstMatch(value);
-    if (match == null) {
-      return null;
-    }
-    return int.tryParse(match.group(0)!);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _devicesFuture = _loadAllDevices();
+    // Device control APIs require the exact backend deviceId.
+    // Do not extract partial digits from mixed strings because it can target
+    // the wrong robot and make grab/release appear broken.
+    return int.tryParse(value);
   }
 
   Future<List<_DeviceRecord>> _loadAllDevices() async {
@@ -115,6 +124,38 @@ class _DeviceScreenState extends State<DeviceScreen> {
     }
   }
 
+  Future<void> _selectDeviceForControl({
+    required int deviceId,
+    required String deviceName,
+    bool jumpToControl = false,
+  }) async {
+    await SessionService.persistControlDevice(
+      deviceId: deviceId,
+      deviceName: deviceName,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _selectedControlDeviceId = deviceId;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã chọn thiết bị điều khiển: $deviceName (#$deviceId)'),
+      ),
+    );
+
+    if (jumpToControl) {
+      Navigator.of(context).pushAndRemoveUntil(
+        appRoute(const MainScreen(initialIndex: 2)),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppShell(
@@ -176,6 +217,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
                   item.hubName,
                 ];
                 final robotId = _parseRobotId(device.id);
+                final isSelectedForControl =
+                    robotId != null && robotId == _selectedControlDeviceId;
 
                 return Card(
                   child: Padding(
@@ -224,6 +267,20 @@ class _DeviceScreenState extends State<DeviceScreen> {
                                       context,
                                     ).textTheme.labelMedium,
                                   ),
+                                  if (isSelectedForControl)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Selected for Control',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: AppColors.success,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -265,13 +322,50 @@ class _DeviceScreenState extends State<DeviceScreen> {
                               child: OutlinedButton.icon(
                                 style: actionButtonStyle,
                                 onPressed: () {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    appRoute(const MainScreen(initialIndex: 2)),
-                                    (route) => false,
+                                  if (robotId == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Device ID không hợp lệ. Hãy refresh và thử lại.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  _selectDeviceForControl(
+                                    deviceId: robotId,
+                                    deviceName: device.name,
+                                  );
+                                },
+                                icon: const Icon(Icons.check_circle_outline),
+                                label: const Text('Chọn thiết bị'),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: actionButtonStyle,
+                                onPressed: () {
+                                  if (robotId == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Device ID không hợp lệ. Hãy refresh và thử lại.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  _selectDeviceForControl(
+                                    deviceId: robotId,
+                                    deviceName: device.name,
+                                    jumpToControl: true,
                                   );
                                 },
                                 icon: const Icon(Icons.videogame_asset),
-                                label: const Text('Điều khiển'),
+                                label: const Text('Chọn & Điều khiển'),
                               ),
                             ),
                           ],

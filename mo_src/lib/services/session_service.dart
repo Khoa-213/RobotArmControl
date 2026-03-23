@@ -13,6 +13,8 @@ class SessionService {
   static const String _roleKey = 'session_role';
   static const String _statusKey = 'session_status';
   static const String _factoryIdKey = 'session_factory_id';
+  static const String _controlDeviceIdKey = 'control_device_id';
+  static const String _controlDeviceNameKey = 'control_device_name';
   static const Duration _sessionTtl = Duration(days: 30);
 
   static Future<void> persistSession({
@@ -65,6 +67,8 @@ class SessionService {
     await prefs.remove(_roleKey);
     await prefs.remove(_statusKey);
     await prefs.remove(_factoryIdKey);
+    await prefs.remove(_controlDeviceIdKey);
+    await prefs.remove(_controlDeviceNameKey);
     ApiService.clearAccessToken();
   }
 
@@ -134,5 +138,36 @@ class SessionService {
   static Future<String?> getCurrentRole() async {
     final identity = await getSessionIdentity();
     return identity?.user.role;
+  }
+
+  static Future<void> persistControlDevice({
+    required int deviceId,
+    required String deviceName,
+  }) async {
+    if (deviceId <= 0) {
+      throw ArgumentError('deviceId must be positive');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_controlDeviceIdKey, deviceId);
+    await prefs.setString(_controlDeviceNameKey, deviceName);
+    await touchSession();
+  }
+
+  static Future<void> clearControlDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_controlDeviceIdKey);
+    await prefs.remove(_controlDeviceNameKey);
+  }
+
+  static Future<({int deviceId, String deviceName})?> getControlDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+    final deviceId = prefs.getInt(_controlDeviceIdKey);
+    if (deviceId == null || deviceId <= 0) {
+      return null;
+    }
+
+    final name = prefs.getString(_controlDeviceNameKey) ?? 'Unknown Device';
+    return (deviceId: deviceId, deviceName: name);
   }
 }

@@ -9,8 +9,10 @@
       "dependencies": [
         "cupertino_icons",
         "flutter",
+        "flutter_joystick",
         "http",
-        "shared_preferences"
+        "shared_preferences",
+        "web_socket_channel"
       ],
       "devDependencies": [
         "flutter_launcher_icons",
@@ -57,6 +59,17 @@
       ]
     },
     {
+      "name": "web_socket_channel",
+      "version": "3.0.3",
+      "dependencies": [
+        "async",
+        "crypto",
+        "stream_channel",
+        "web",
+        "web_socket"
+      ]
+    },
+    {
       "name": "shared_preferences",
       "version": "2.5.4",
       "dependencies": [
@@ -94,6 +107,13 @@
         "meta",
         "sky_engine",
         "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_joystick",
+      "version": "0.2.2",
+      "dependencies": [
+        "flutter"
       ]
     },
     {
@@ -233,6 +253,33 @@
       "dependencies": []
     },
     {
+      "name": "web_socket",
+      "version": "1.0.1",
+      "dependencies": [
+        "web"
+      ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "crypto",
+      "version": "3.0.7",
+      "dependencies": [
+        "typed_data"
+      ]
+    },
+    {
+      "name": "async",
+      "version": "2.13.0",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
       "name": "shared_preferences_windows",
       "version": "2.4.1",
       "dependencies": [
@@ -291,11 +338,6 @@
       ]
     },
     {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
       "name": "http_parser",
       "version": "4.1.2",
       "dependencies": [
@@ -303,14 +345,6 @@
         "source_span",
         "string_scanner",
         "typed_data"
-      ]
-    },
-    {
-      "name": "async",
-      "version": "2.13.0",
-      "dependencies": [
-        "collection",
-        "meta"
       ]
     },
     {
@@ -397,6 +431,13 @@
       ]
     },
     {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
       "name": "path_provider_windows",
       "version": "2.3.0",
       "dependencies": [
@@ -446,13 +487,6 @@
         "path",
         "path_provider_platform_interface",
         "xdg_directories"
-      ]
-    },
-    {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
       ]
     },
     {
