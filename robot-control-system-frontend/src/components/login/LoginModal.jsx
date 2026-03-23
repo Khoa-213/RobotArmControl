@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { authApi } from "../../api/authApi";
 import { getDefaultAdminPath } from "../../utils/auth";
 
 function LoginModal({ isOpen, onClose }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -62,9 +64,7 @@ function LoginModal({ isOpen, onClose }) {
         password: form.password,
       });
 
-      console.log("LOGIN SUCCESS:", authData);
-
-      globalThis.location.href = getDefaultAdminPath(authData?.role);
+      navigate(getDefaultAdminPath(authData?.role), { replace: true });
     } catch (error) {
       console.error(error);
       setServerError("Incorrect username or password");

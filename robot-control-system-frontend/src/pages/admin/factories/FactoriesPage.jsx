@@ -4,14 +4,17 @@ import CreateFactoryModal from "../../../components/factories/CreateFactoryModal
 import EditFactoryModal from "../../../components/factories/EditFactoryModal";
 import {
   getFactories,
+  getFactoryById,
   createFactory,
   updateFactory,
   deleteFactory,
 } from "../../../api/factoryService";
-import { getRole, isAdminRole } from "../../../utils/auth";
+import { getFactoryId, getRole, isAdminRole, isOperatorRole } from "../../../utils/auth";
 
 export default function FactoriesPage() {
   const canManage = isAdminRole(getRole());
+  const isOperator = isOperatorRole(getRole());
+  const operatorFactoryId = getFactoryId();
 
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,8 +28,37 @@ export default function FactoriesPage() {
     try {
       setLoading(true);
       setError("");
+      if (isOperator) {
+        if (!operatorFactoryId) {
+          setFactories([]);
+          setError("No factory is assigned to this operator.");
+          return;
+        }
+        // Some backends may not allow OPERATOR to call GET /api/factories/{id}.
+        // Prefer listing and filtering; fall back to by-id if needed.
+        let filtered = [];
+        try {
+          const data = await getFactories();
+          const list = Array.isArray(data) ? data : [];
+          const found = list.find((f) => Number(f?.factoryId) === Number(operatorFactoryId));
+          filtered = found ? [found] : [];
+        } catch {
+          filtered = [];
+        }
+
+        if (filtered.length > 0) {
+          setFactories(filtered);
+          return;
+        }
+
+        const factory = await getFactoryById(operatorFactoryId);
+        setFactories(factory ? [factory] : []);
+        return;
+      }
+
       const data = await getFactories();
-      setFactories(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setFactories(list);
     } catch (e) {
       setError(e?.message || "Failed to load factories");
     } finally {

@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Hands } from "@mediapipe/hands";
 import { cameraService } from "../api/cameraService";
+import { logService } from "../api/logService";
 import { buildWsUrl, WebsocketService } from "../services/websocketService";
 
 const JOINT_LIMITS = [
-  [-90, 90],
-  [-45, 45],
-  [-60, 60],
-  [-90, 90],
-  [-90, 90],
-  [-90, 90],
+  [-175, 175], // J0 shoulder_link
+  [-45, 45],   // J1 arm_link
+  [-60, 60],   // J2 elbow_link
+  [-90, 90],   // J3 forearm_link
+  [-90, 90],   // J4 wrist_link
+  [-90, 90],   // J5 hand_link
 ];
 
 const SPEEDS_DEG_PER_SEC = [120, 90, 90, 100, 100, 100];
 const MODE_HOLD_MS = 300;
+const GRIPPER_GESTURE_HOLD_MS = 220;
+const GRIPPER_ACTION_COOLDOWN_MS = 800;
+const PINCH_CLOSED_THRESHOLD = 0.045;
 
 const SELFIE_MODE = String(import.meta.env.VITE_AI_CAMERA_SELFIE_MODE || "1") !== "0";
-const DEADZONE = 0.08;
+const ENABLE_DIRECT_WS_AI_ANGLES = String(import.meta.env.VITE_AI_CAMERA_DIRECT_WS_SEND || "0") === "1";
+const DEADZONE_RAW = Number(import.meta.env.VITE_AI_CAMERA_DEADZONE || 0.16);
+const DEADZONE = Number.isFinite(DEADZONE_RAW) ? Math.min(0.25, Math.max(0.05, DEADZONE_RAW)) : 0.16;
 const MAX_OFFSET = 0.35;
 
 function clamp(value, min, max) {
@@ -54,28 +60,59 @@ function maybeMirror01(x) {
   return SELFIE_MODE ? 1 - x : x;
 }
 
+function computeFingerDistance(landmarks, aIdx, bIdx) {
+  const a = landmarks?.[aIdx];
+  const b = landmarks?.[bIdx];
+  if (!a || !b) return null;
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function computePinchDistances(landmarks) {
+  const thumbIndex = computeFingerDistance(landmarks, 4, 8);
+  const thumbMiddle = computeFingerDistance(landmarks, 4, 12);
+  return { thumbIndex, thumbMiddle };
+}
+
+function isNeutralControlZone(control) {
+  return Math.abs(Number(control || 0)) < 1e-6;
+}
+
+function resetPendingAutoGripper(refs) {
+  refs.pendingGripperActionRef.current = null;
+  refs.pendingGripperSinceRef.current = 0;
+}
+
 function countFingers(landmarks, handedness) {
   if (!landmarks || landmarks.length < 21) return 0;
 
   let fingers = 0;
-  // In MediaPipe, y increases downward; "open" means tip is above pip.
-  if (landmarks[8].y < landmarks[6].y) fingers += 1;
-  if (landmarks[12].y < landmarks[10].y) fingers += 1;
-  if (landmarks[16].y < landmarks[14].y) fingers += 1;
-  if (landmarks[20].y < landmarks[18].y) fingers += 1;
+  const FINGER_OPEN_THRESHOLD = 0.015;
 
+  // Trỏ
+  if (landmarks[8].y < landmarks[6].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Giữa
+  if (landmarks[12].y < landmarks[10].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Áp út
+  if (landmarks[16].y < landmarks[14].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+  // Út
+  if (landmarks[20].y < landmarks[18].y - FINGER_OPEN_THRESHOLD) fingers += 1;
+
+  // Ngón cái giữ nguyên logic tối ưu như hiện tại
   const thumbDx = landmarks[4].x - landmarks[2].x;
-  let thumbOpen;
+  const thumbDy = Math.abs(landmarks[4].y - landmarks[2].y);
+  let thumbOpen = false;
   if (handedness === "Right") {
-    thumbOpen = thumbDx > 0.03;
+    thumbOpen = thumbDx > 0.025 && thumbDy < 0.15;
   } else if (handedness === "Left") {
-    thumbOpen = thumbDx < -0.03;
+    thumbOpen = thumbDx < -0.025 && thumbDy < 0.15;
   } else {
-    thumbOpen = Math.abs(thumbDx) > 0.05;
+    thumbOpen = Math.abs(thumbDx) > 0.035 && thumbDy < 0.15;
   }
 
   if (!thumbOpen) {
-    thumbOpen = Math.abs(thumbDx) > 0.07;
+    thumbOpen = Math.abs(thumbDx) > 0.06;
   }
 
   if (thumbOpen) fingers += 1;
@@ -88,6 +125,9 @@ function getHandedness(results) {
   return null;
 }
 
+function lowPassFilter(alpha, prev, next) {
+  return prev == null ? next : prev * (1 - alpha) + next * alpha;
+}
 
 export function useAiCamera() {
   const videoRef = useRef(null);
@@ -115,6 +155,7 @@ export function useAiCamera() {
     landmarks: null,
     handednessRaw: null,
     palmX: null, // raw filtered (0..1) in video coords
+    pinchDistance: null,
     control: 0,
   });
 
@@ -136,12 +177,51 @@ export function useAiCamera() {
 
   const consecutiveSendErrorsRef = useRef(0);
   const sendErrorShownRef = useRef(false);
-
   const consecutiveWsSendErrorsRef = useRef(0);
 
   const wsServiceRef = useRef(null);
 
+  const lastGripperActionRef = useRef(null);
+  const pendingGripperActionRef = useRef(null);
+  const pendingGripperSinceRef = useRef(0);
+  const lastGripperSentAtRef = useRef(0);
+  const gripperCommandInFlightRef = useRef(false);
+
   const lastAiAnglesConsoleLogRef = useRef(0);
+
+  const SESSION_DEVICE_KEY = "robotSession.deviceId";
+  const LAST_SESSION_ID_KEY = "robotLogs.lastSessionId";
+  const LAST_TELEMETRY_KEY = "robotTelemetry.last";
+
+  const sessionStartedAtRef = useRef(0);
+  const lastFpsRef = useRef(null);
+
+  function getClientDeviceType() {
+    const ua = String(navigator.userAgent || "");
+    return /Mobi|Android|iPhone|iPad/i.test(ua) ? "Mobile" : "Desktop";
+  }
+
+  function getClientDeviceName() {
+    // Browsers can't access the OS hostname for privacy reasons.
+    // Best-effort: platform + browser UA.
+    const platform = navigator.userAgentData?.platform || navigator.platform || "Unknown";
+    return String(platform);
+  }
+
+  function getClientModel() {
+    const ua = String(navigator.userAgent || "");
+    return ua;
+  }
+
+  function getInternetStatus() {
+    const online = navigator.onLine;
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const effectiveType = conn?.effectiveType;
+    if (typeof effectiveType === "string" && effectiveType) {
+      return online ? `Online (${effectiveType})` : "Offline";
+    }
+    return online ? "Online" : "Offline";
+  }
 
   function stopLocal() {
     runningRef.current = false;
@@ -208,6 +288,8 @@ export function useAiCamera() {
             setSessionActive(false);
             sessionActiveRef.current = false;
             stopLocal();
+            sessionDeviceIdRef.current = null;
+            setSessionDeviceId(null);
           }
         }
       },
@@ -219,6 +301,13 @@ export function useAiCamera() {
   }
 
   function getPreferredDeviceId() {
+    // Prefer session-scoped selected device.
+    const fromSession = sessionStorage.getItem(SESSION_DEVICE_KEY);
+    if (fromSession != null && String(fromSession).trim() !== "") {
+      const n = Number(fromSession);
+      if (Number.isFinite(n)) return n;
+    }
+
     // Minimal mechanism (no new UI): allow selecting deviceId via URL (?deviceId=)
     // or existing localStorage keys if the app already stores it.
     try {
@@ -249,6 +338,177 @@ export function useAiCamera() {
     }
   }
 
+  async function startSession() {
+    if (isViewer) return;
+    setError("");
+
+    const deviceId = getPreferredDeviceId();
+    if (deviceId == null || Number.isNaN(deviceId)) {
+      setError("Please select a device first.");
+      return;
+    }
+
+    try {
+      const started = await cameraService.start(deviceId);
+      sessionActiveRef.current = true;
+      setSessionActive(true);
+
+      sessionStartedAtRef.current = performance.now();
+
+      const dev = started?.deviceId ?? deviceId;
+      sessionDeviceIdRef.current = dev;
+      setSessionDeviceId(dev);
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Failed to start session");
+    }
+  }
+
+  async function sendGripperAction(action) {
+    if (isViewer) return false;
+
+    const normalized = String(action || "").trim().toLowerCase();
+    if (normalized !== "grab" && normalized !== "release") {
+      setError("Invalid gripper action");
+      return false;
+    }
+
+    const deviceId = sessionDeviceIdRef.current ?? getPreferredDeviceId();
+    if (deviceId == null || Number.isNaN(deviceId)) {
+      setError("Please select a device first.");
+      return false;
+    }
+
+    try {
+      await cameraService.sendGripperAction(normalized, Number(deviceId));
+      return true;
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Failed to send gripper command");
+      return false;
+    }
+  }
+
+  function detectGripperActionFromPinches(pinchDistances) {
+    const thumbIndex = pinchDistances?.thumbIndex;
+    const thumbMiddle = pinchDistances?.thumbMiddle;
+
+    if (thumbIndex != null && thumbIndex <= PINCH_CLOSED_THRESHOLD) return "grab";
+    if (thumbMiddle != null && thumbMiddle <= PINCH_CLOSED_THRESHOLD) return "release";
+    return null;
+  }
+
+  function maybeSendAutoGripperAction(action, nowMs) {
+    if (!action) return;
+
+    if (pendingGripperActionRef.current !== action) {
+      pendingGripperActionRef.current = action;
+      pendingGripperSinceRef.current = nowMs;
+      return;
+    }
+
+    if (nowMs - pendingGripperSinceRef.current < GRIPPER_GESTURE_HOLD_MS) {
+      return;
+    }
+
+    if (lastGripperActionRef.current === action) {
+      return;
+    }
+
+    if (nowMs - lastGripperSentAtRef.current < GRIPPER_ACTION_COOLDOWN_MS) {
+      return;
+    }
+
+    if (gripperCommandInFlightRef.current) {
+      return;
+    }
+
+    gripperCommandInFlightRef.current = true;
+    sendGripperAction(action)
+        .then((ok) => {
+          if (ok) {
+            lastGripperActionRef.current = action;
+            lastGripperSentAtRef.current = nowMs;
+          }
+        })
+        .finally(() => {
+          gripperCommandInFlightRef.current = false;
+        });
+  }
+
+  async function endSession() {
+    if (isViewer) return;
+    setError("");
+
+    try {
+      const stopped = await cameraService.stop();
+      sessionActiveRef.current = false;
+      setSessionActive(false);
+
+      const sessionId = stopped?.sessionId ?? null;
+      const deviceId = stopped?.deviceId ?? sessionDeviceIdRef.current ?? getPreferredDeviceId();
+
+      const telemetry = {
+        timestamp: new Date().toISOString(),
+        deviceId: deviceId != null ? Number(deviceId) : null,
+        deviceName: getClientDeviceName(),
+        deviceType: getClientDeviceType(),
+        model: getClientModel(),
+        jointData: anglesRef.current?.slice?.(0, 6) || [0, 0, 0, 0, 0, 0],
+        battery: null,
+        temperatures: { robot: null, motor: null, cpu: null },
+        fps: lastFpsRef.current,
+        internet: getInternetStatus(),
+        uptimeSeconds:
+            sessionStartedAtRef.current > 0
+                ? (performance.now() - sessionStartedAtRef.current) / 1000
+                : null,
+        sessionId,
+      };
+
+      try {
+        sessionStorage.setItem(LAST_TELEMETRY_KEY, JSON.stringify(telemetry));
+      } catch {
+        // ignore
+      }
+
+      if (sessionId != null && deviceId != null && Number.isFinite(Number(deviceId))) {
+        try {
+          sessionStorage.setItem(LAST_SESSION_ID_KEY, String(sessionId));
+        } catch {
+          // ignore
+        }
+
+        try {
+          await logService.ingest({
+            robotId: Number(deviceId),
+            sessionId,
+            userId: stopped?.userId ?? null,
+            factoryId: stopped?.factoryId ?? null,
+            logType: "AUDIT",
+            severity: "INFO",
+            source: "CAMERA",
+            message: `Session ended (deviceId=${deviceId})`,
+            eventTime: new Date().toISOString(),
+            metadata: {
+              controlMode: stopped?.controlMode ?? "CAMERA",
+              telemetry,
+            },
+          });
+        } catch {
+          // If log ingestion fails, do not block ending session.
+        }
+      }
+
+      return stopped;
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Failed to end session");
+      return null;
+    } finally {
+      stopLocal();
+      sessionDeviceIdRef.current = null;
+      setSessionDeviceId(null);
+    }
+  }
+
   async function startWebcam() {
     const v = videoRef.current;
     if (!v) throw new Error("Video element not ready");
@@ -260,6 +520,63 @@ export function useAiCamera() {
     await v.play();
 
     setIsCameraRunning(true);
+  }
+
+  async function startCamera() {
+    if (isViewer) return;
+
+    if (!sessionActiveRef.current) {
+      setError("Start Session first.");
+      return;
+    }
+
+    setError("");
+    ensureWs();
+
+    try {
+      await startWebcam();
+    } catch (e) {
+      setError(e?.message || "Camera permission denied or webcam unavailable");
+      return;
+    }
+
+    // reset angles before run
+    anglesRef.current = [0, 0, 0, 0, 0, 0];
+    setAngles([0, 0, 0, 0, 0, 0]);
+    selectedJointRef.current = 0;
+    pendingJointRef.current = 0;
+    pendingSinceRef.current = performance.now();
+    lastUiSelectedJointRef.current = 0;
+    lastUiFingersCountRef.current = 0;
+    setSelectedJoint(0);
+    setFingersCount(0);
+    lastTickRef.current = performance.now();
+    lastSendRef.current = 0;
+    lastRestSendRef.current = 0;
+    palmXFilteredRef.current = null;
+
+    consecutiveSendErrorsRef.current = 0;
+    sendErrorShownRef.current = false;
+    consecutiveWsSendErrorsRef.current = 0;
+
+    runningRef.current = true;
+    isSendingAnglesRef.current = true;
+    setIsSendingAngles(true);
+
+    lastGripperActionRef.current = null;
+    pendingGripperActionRef.current = null;
+    pendingGripperSinceRef.current = 0;
+    lastGripperSentAtRef.current = 0;
+    gripperCommandInFlightRef.current = false;
+
+    initHands();
+    await startLoop();
+  }
+
+  async function stopCamera() {
+    if (isViewer) return;
+    setError("");
+    stopLocal();
   }
 
   function initHands() {
@@ -281,11 +598,14 @@ export function useAiCamera() {
 
     hands.onResults((results) => {
       if (!runningRef.current) return;
+      if (!sessionActiveRef.current) return;
 
       const now = performance.now();
       const last = lastTickRef.current || now;
       const dt = Math.max(0.001, Math.min(0.2, (now - last) / 1000));
       lastTickRef.current = now;
+
+      lastFpsRef.current = dt > 0 ? 1 / dt : null;
 
       const landmarks = results?.multiHandLandmarks?.[0];
       if (!landmarks) return;
@@ -320,9 +640,9 @@ export function useAiCamera() {
       if (palmXRaw == null) return;
 
       // low-pass filter to reduce jitter
-      const alpha = 0.25;
+      const alpha = 0.25; // hoặc nhỏ hơn để mượt hơn, ví dụ 0.15
       const prev = palmXFilteredRef.current;
-      const filteredRaw = prev == null ? palmXRaw : prev + alpha * (palmXRaw - prev);
+      const filteredRaw = lowPassFilter(alpha, prev, palmXRaw);
       palmXFilteredRef.current = filteredRaw;
 
       debugRef.current.palmX = filteredRaw;
@@ -332,6 +652,16 @@ export function useAiCamera() {
 
       const control = normalizePalmX(filteredForControl);
       debugRef.current.control = control;
+
+      const pinchDistances = computePinchDistances(landmarks);
+      debugRef.current.pinchDistance = pinchDistances?.thumbIndex ?? null;
+      const inNeutralZone = isNeutralControlZone(control);
+      const gripperAction = detectGripperActionFromPinches(pinchDistances);
+      maybeSendAutoGripperAction(gripperAction, now);
+
+      if (inNeutralZone) {
+        return;
+      }
 
       // Python-style: integrate ONLY the selected joint
       const next = anglesRef.current.slice(0, 6);
@@ -348,7 +678,8 @@ export function useAiCamera() {
       if (now - lastSendRef.current < sendIntervalMs) return;
       lastSendRef.current = now;
 
-      const deviceId = sessionDeviceIdRef.current;
+      const deviceId = sessionDeviceIdRef.current ?? getPreferredDeviceId();
+      if (deviceId == null || Number.isNaN(deviceId)) return;
       const payloadAngles = next.map((n) => Number(n));
       const payload = { type: "ai_angles", deviceId, angles: payloadAngles };
 
@@ -363,7 +694,7 @@ export function useAiCamera() {
       }
 
       // Optional: WS direct (useful for debugging), but do not depend on it.
-      if (wsConnectedRef.current) {
+      if (ENABLE_DIRECT_WS_AI_ANGLES && wsConnectedRef.current) {
         const svc = wsServiceRef.current;
         const ok = svc?.sendJson(payload);
         if (!ok) {
@@ -400,7 +731,7 @@ export function useAiCamera() {
         if (consecutiveSendErrorsRef.current >= 10 && !sendErrorShownRef.current) {
           sendErrorShownRef.current = true;
           setError(
-            "Hand tracking failed to run. Possible cause: MediaPipe assets blocked/unreachable (CDN) or insecure context. " +
+              "Hand tracking failed to run. Possible cause: MediaPipe assets blocked/unreachable (CDN) or insecure context. " +
               "Open DevTools Console/Network for details. " +
               (e?.message ? `(${e.message})` : "")
           );
@@ -413,77 +744,15 @@ export function useAiCamera() {
   }
 
   async function start() {
-    if (isViewer) return;
-
-    setError("");
-
-    try {
-      const started = await cameraService.start(getPreferredDeviceId());
-      sessionActiveRef.current = true;
-      setSessionActive(true);
-
-      const dev = started?.deviceId ?? null;
-      sessionDeviceIdRef.current = dev;
-      setSessionDeviceId(dev);
-    } catch (e) {
-      setError(e?.response?.data?.message || e?.message || "Failed to start camera session");
-      return;
-    }
-
-    ensureWs();
-
-    try {
-      await startWebcam();
-    } catch (e) {
-      setError(e?.message || "Camera permission denied or webcam unavailable");
-      return;
-    }
-
-    // reset angles before run
-    anglesRef.current = [0, 0, 0, 0, 0, 0];
-    setAngles([0, 0, 0, 0, 0, 0]);
-    selectedJointRef.current = 0;
-    pendingJointRef.current = 0;
-    pendingSinceRef.current = performance.now();
-    lastUiSelectedJointRef.current = 0;
-    lastUiFingersCountRef.current = 0;
-    setSelectedJoint(0);
-    setFingersCount(0);
-    lastTickRef.current = performance.now();
-    lastSendRef.current = 0;
-    lastRestSendRef.current = 0;
-    palmXFilteredRef.current = null;
-
-    consecutiveSendErrorsRef.current = 0;
-    sendErrorShownRef.current = false;
-
-    consecutiveWsSendErrorsRef.current = 0;
-
-    runningRef.current = true;
-    isSendingAnglesRef.current = true;
-    setIsSendingAngles(true);
-
-    initHands();
-    await startLoop();
+    // Backward compatibility: Start acts like Start Session + Start AI Camera.
+    await startSession();
+    if (!sessionActiveRef.current) return;
+    await startCamera();
   }
 
   async function stop() {
-    if (isViewer) return;
-
-    setError("");
-
-    try {
-      await cameraService.stop();
-      sessionActiveRef.current = false;
-      setSessionActive(false);
-    } catch (e) {
-      // even if REST fails, we still stop local resources
-      setError(e?.response?.data?.message || e?.message || "Failed to stop camera session");
-    } finally {
-      stopLocal();
-      sessionDeviceIdRef.current = null;
-      setSessionDeviceId(null);
-    }
+    // Backward compatibility: Stop acts like End Session.
+    await endSession();
   }
 
   useEffect(() => {
@@ -519,6 +788,11 @@ export function useAiCamera() {
     maxOffset: MAX_OFFSET,
     debugRef,
     error,
+    startSession,
+    endSession,
+    sendGripperAction,
+    startCamera,
+    stopCamera,
     start,
     stop,
     refreshStatus,
